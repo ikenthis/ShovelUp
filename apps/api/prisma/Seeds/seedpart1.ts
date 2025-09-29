@@ -1,0 +1,521 @@
+import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+
+const prisma = new PrismaClient();
+
+// Part 1: Core Foundation Data (Constellations, Organizations, Professionals)
+async function seedPart1() {
+  console.log('🌟 Seeding Part 1: Core Foundation Data...');
+
+  // Create Constellations
+  const constellation1 = await prisma.constellation.create({
+    data: {
+      name: 'Madrid Smart District',
+      slug: 'madrid-smart-district',
+      description:
+        'A comprehensive urban development project focusing on sustainable and smart city technologies in Madrid.',
+      location: {
+        lat: 40.4168,
+        lng: -3.7038,
+        bounds: {
+          north: 40.4268,
+          south: 40.4068,
+          east: -3.6938,
+          west: -3.7138,
+        },
+        address: 'Distrito Centro, Madrid, Spain',
+      },
+      timezone: 'Europe/Madrid',
+      currency: 'EUR',
+      language: 'es',
+      isActive: true,
+      isPublic: true,
+      totalBudget: 45000000,
+      startDate: new Date('2024-01-15'),
+      estimatedEnd: new Date('2026-12-31'),
+      networkDensity: 0.75,
+      activityScore: 8.5,
+      innovationRate: 7.2,
+      collaborationIndex: 9.1,
+      metadata: {
+        projectCode: 'MSD-2024',
+        governmentApproval: 'APPR-2023-1245',
+        sustainabilityRating: 'A+',
+      },
+      settings: {
+        allowPublicViewing: true,
+        requireApprovalForJoining: true,
+        enableInnovationSharing: true,
+      },
+      createdBy: 'system',
+    },
+  });
+
+  const constellation2 = await prisma.constellation.create({
+    data: {
+      name: 'Barcelona Waterfront Renewal',
+      slug: 'barcelona-waterfront-renewal',
+      description:
+        "Renovation and modernization of Barcelona's historic waterfront area with mixed-use development.",
+      location: {
+        lat: 41.3851,
+        lng: 2.1734,
+        bounds: {
+          north: 41.3951,
+          south: 41.3751,
+          east: 2.1834,
+          west: 2.1634,
+        },
+        address: 'Port Vell, Barcelona, Spain',
+      },
+      timezone: 'Europe/Madrid',
+      currency: 'EUR',
+      language: 'ca',
+      isActive: true,
+      isPublic: false,
+      totalBudget: 28500000,
+      startDate: new Date('2024-03-01'),
+      estimatedEnd: new Date('2025-11-30'),
+      networkDensity: 0.65,
+      activityScore: 7.8,
+      innovationRate: 6.9,
+      collaborationIndex: 8.3,
+      metadata: {
+        projectCode: 'BWR-2024',
+        heritageProtection: 'UNESCO-compliant',
+        environmentalImpact: 'Positive',
+      },
+      settings: {
+        allowPublicViewing: false,
+        requireApprovalForJoining: true,
+        enableInnovationSharing: false,
+      },
+      createdBy: 'system',
+    },
+  });
+
+  // Create Organizations
+  const org1 = await prisma.organization.create({
+    data: {
+      name: 'Iberica Construcciones',
+      slug: 'iberica-construcciones',
+      legalName: 'Iberica Construcciones S.A.',
+      description:
+        'Leading construction company specializing in large-scale urban development projects across Spain.',
+      type: 'GENERAL_CONTRACTOR',
+      size: 'LARGE',
+      industry: 'COMMERCIAL',
+      email: 'info@ibericaconstrucciones.es',
+      phone: '+34 91 123 4567',
+      website: 'https://www.ibericaconstrucciones.es',
+      address: {
+        street: 'Calle de Alcalá, 123',
+        city: 'Madrid',
+        state: 'Madrid',
+        postalCode: '28009',
+        country: 'Spain',
+      },
+      taxId: 'ESA12345678',
+      licenses: {
+        constructionLicense: 'CONST-ES-2023-001',
+        safetyLicense: 'SAFE-ES-2023-012',
+        environmentalLicense: 'ENV-ES-2023-005',
+      },
+      certifications: {
+        iso9001: true,
+        iso14001: true,
+        iso45001: true,
+        leed: 'Gold Certified',
+      },
+      specialties: [
+        'Urban Development',
+        'Smart City Infrastructure',
+        'Sustainable Construction',
+      ],
+      reputationScore: 8.7,
+      projectsCompleted: 142,
+      projectsActive: 8,
+      averageRating: 4.3,
+      safetyScore: 9.2,
+      qualityScore: 8.8,
+      onTimeDeliveryRate: 0.89,
+      yearEstablished: 1987,
+      employeeCount: 850,
+      annualRevenue: 125000000,
+      isVerified: true,
+      verifiedAt: new Date('2023-12-01'),
+      verifiedBy: 'industry-council',
+      isActive: true,
+      avatar: '/avatars/organizations/iberica-construcciones.jpg',
+      socialLinks: {
+        linkedin: 'https://linkedin.com/company/iberica-construcciones',
+        twitter: 'https://twitter.com/ibericaconst',
+      },
+    },
+  });
+
+  const org2 = await prisma.organization.create({
+    data: {
+      name: 'Arquitectura Vanguardia',
+      slug: 'arquitectura-vanguardia',
+      legalName: 'Arquitectura Vanguardia S.L.',
+      description:
+        'Innovative architectural firm focused on sustainable and technology-integrated designs.',
+      type: 'ARCHITECT',
+      size: 'MEDIUM',
+      industry: 'MIXED_USE',
+      email: 'contact@arquivanguardia.es',
+      phone: '+34 93 987 6543',
+      website: 'https://www.arquivanguardia.es',
+      address: {
+        street: 'Passeig de Gràcia, 45',
+        city: 'Barcelona',
+        state: 'Catalonia',
+        postalCode: '08007',
+        country: 'Spain',
+      },
+      taxId: 'ESB87654321',
+      licenses: {
+        architecturalLicense: 'ARCH-ES-2022-078',
+        urbanPlanningLicense: 'URBAN-ES-2022-156',
+      },
+      certifications: {
+        breeam: 'Excellent',
+        passivhaus: true,
+        leed: 'Platinum Certified',
+      },
+      specialties: [
+        'Sustainable Architecture',
+        'Smart Building Design',
+        'Urban Planning',
+      ],
+      reputationScore: 9.1,
+      projectsCompleted: 76,
+      projectsActive: 12,
+      averageRating: 4.6,
+      safetyScore: 8.9,
+      qualityScore: 9.3,
+      onTimeDeliveryRate: 0.94,
+      yearEstablished: 2005,
+      employeeCount: 125,
+      annualRevenue: 18500000,
+      isVerified: true,
+      verifiedAt: new Date('2023-11-15'),
+      verifiedBy: 'architecture-council',
+      isActive: true,
+      avatar: '/avatars/organizations/arquitectura-vanguardia.jpg',
+      socialLinks: {
+        linkedin: 'https://linkedin.com/company/arquitectura-vanguardia',
+        instagram: 'https://instagram.com/arquivanguardia',
+      },
+    },
+  });
+
+  const org3 = await prisma.organization.create({
+    data: {
+      name: 'TechnoIngeniería Sistemas',
+      slug: 'technoingenieria-sistemas',
+      legalName: 'TechnoIngeniería Sistemas S.L.U.',
+      description:
+        'Engineering consultancy specializing in MEP systems and smart building technologies.',
+      type: 'ENGINEER_MEP',
+      size: 'SMALL',
+      industry: 'COMMERCIAL',
+      email: 'info@technoing.es',
+      phone: '+34 91 456 7890',
+      website: 'https://www.technoing.es',
+      address: {
+        street: 'Calle de Serrano, 89',
+        city: 'Madrid',
+        state: 'Madrid',
+        postalCode: '28006',
+        country: 'Spain',
+      },
+      taxId: 'ESC11223344',
+      licenses: {
+        engineeringLicense: 'ENG-ES-2023-234',
+        electricalLicense: 'ELEC-ES-2023-567',
+      },
+      certifications: {
+        iso9001: true,
+        knx: 'Certified Partner',
+        bacnet: 'Advanced Certified',
+      },
+      specialties: [
+        'MEP Engineering',
+        'Building Automation',
+        'Energy Efficiency',
+      ],
+      reputationScore: 8.4,
+      projectsCompleted: 89,
+      projectsActive: 6,
+      averageRating: 4.2,
+      safetyScore: 8.7,
+      qualityScore: 8.9,
+      onTimeDeliveryRate: 0.91,
+      yearEstablished: 2012,
+      employeeCount: 35,
+      annualRevenue: 4200000,
+      isVerified: true,
+      verifiedAt: new Date('2024-01-10'),
+      verifiedBy: 'engineering-board',
+      isActive: true,
+      avatar: '/avatars/organizations/technoingenieria.jpg',
+      socialLinks: {
+        linkedin: 'https://linkedin.com/company/technoingenieria-sistemas',
+      },
+    },
+  });
+
+  const password = 'some_password';
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Create Professionals
+  const professional1 = await prisma.professional.create({
+    data: {
+      email: 'carlos.martinez@ibericaconstrucciones.es',
+      username: 'carlos_martinez_pm',
+      password: hashedPassword,
+      firstName: 'Carlos',
+      lastName: 'Martínez',
+      displayName: 'Carlos Martínez',
+      title: 'Senior Project Manager',
+      bio: 'Experienced project manager with over 15 years in large-scale construction projects. Specialized in urban development and smart city implementations.',
+      discipline: 'PROJECT_MANAGEMENT',
+      specialties: [
+        'Urban Development',
+        'Smart Cities',
+        'Stakeholder Management',
+        'Risk Assessment',
+      ],
+      yearsExperience: 15,
+      currentRole: 'Senior Project Manager',
+      phone: '+34 91 123 4567',
+      location: {
+        city: 'Madrid',
+        country: 'Spain',
+        timezone: 'Europe/Madrid',
+      },
+      avatar: '/avatars/professionals/carlos-martinez.jpg',
+      isVerified: true,
+      verifiedAt: new Date('2023-12-01'),
+      verifiedBy: 'organization-admin',
+      emailVerified: true,
+      phoneVerified: true,
+      licenses: {
+        pmp: 'PMP-2019-789456',
+        prince2: 'PRINCE2-2020-123789',
+      },
+      certifications: {
+        agile: 'Certified Scrum Master',
+        safety: 'NEBOSH General Certificate',
+      },
+      education: {
+        degree: 'Master in Civil Engineering',
+        university: 'Universidad Politécnica de Madrid',
+        year: 2009,
+      },
+      linkedinUrl: 'https://linkedin.com/in/carlos-martinez-pm',
+      websiteUrl: 'https://carlosmartinez-pm.com',
+      reputationScore: 8.9,
+      contributionScore: 9.2,
+      knowledgeShares: 45,
+      mentorshipScore: 8.7,
+      helpfulnessRating: 4.4,
+      responseTime: 2.3,
+      postsCount: 78,
+      commentsCount: 234,
+      likesReceived: 567,
+      sharesReceived: 89,
+      followersCount: 245,
+      followingCount: 123,
+      isActive: true,
+      isAvailableForWork: false,
+      isOpenToMentoring: true,
+      organizationId: org1.id,
+      employmentType: 'FULL_TIME',
+      availabilityStatus: 'BUSY',
+      hourlyRate: 85,
+      privacySettings: {
+        showEmail: false,
+        showPhone: false,
+        showLocation: true,
+        showExperience: true,
+      },
+      notificationSettings: {
+        emailNotifications: true,
+        pushNotifications: true,
+        weeklyDigest: true,
+      },
+    },
+  });
+
+  const professional2 = await prisma.professional.create({
+    data: {
+      email: 'ana.garcia@arquivanguardia.es',
+      username: 'ana_garcia_architect',
+      password: hashedPassword,
+      firstName: 'Ana',
+      lastName: 'García',
+      displayName: 'Ana García',
+      title: 'Lead Architect',
+      bio: 'Passionate architect focused on sustainable design and smart building integration. Award-winning designer with international recognition.',
+      discipline: 'ARCHITECTURE',
+      specialties: [
+        'Sustainable Design',
+        'Smart Buildings',
+        'Urban Planning',
+        'BIM Management',
+      ],
+      yearsExperience: 12,
+      currentRole: 'Lead Architect',
+      phone: '+34 93 987 6543',
+      location: {
+        city: 'Barcelona',
+        country: 'Spain',
+        timezone: 'Europe/Madrid',
+      },
+      avatar: '/avatars/professionals/ana-garcia.jpg',
+      isVerified: true,
+      verifiedAt: new Date('2023-11-15'),
+      verifiedBy: 'organization-admin',
+      emailVerified: true,
+      phoneVerified: true,
+      licenses: {
+        architect: 'COAC-2012-4567',
+        urbanPlanning: 'URBAN-CAT-2015-890',
+      },
+      certifications: {
+        leed: 'LEED AP BD+C',
+        breeam: 'BREEAM Assessor',
+        passivhaus: 'Certified Passive House Designer',
+      },
+      education: {
+        degree: 'Master in Architecture',
+        university: 'ETSAB - UPC Barcelona',
+        year: 2012,
+      },
+      linkedinUrl: 'https://linkedin.com/in/ana-garcia-architect',
+      portfolioUrl: 'https://anagarcia-architecture.com',
+      reputationScore: 9.3,
+      contributionScore: 8.8,
+      knowledgeShares: 67,
+      mentorshipScore: 9.1,
+      helpfulnessRating: 4.7,
+      responseTime: 1.8,
+      postsCount: 95,
+      commentsCount: 289,
+      likesReceived: 743,
+      sharesReceived: 156,
+      followersCount: 398,
+      followingCount: 167,
+      isActive: true,
+      isAvailableForWork: false,
+      isOpenToMentoring: true,
+      organizationId: org2.id,
+      employmentType: 'FULL_TIME',
+      availabilityStatus: 'PARTIALLY_AVAILABLE',
+      hourlyRate: 95,
+      privacySettings: {
+        showEmail: false,
+        showPhone: false,
+        showLocation: true,
+        showExperience: true,
+      },
+      notificationSettings: {
+        emailNotifications: true,
+        pushNotifications: true,
+        weeklyDigest: true,
+      },
+    },
+  });
+
+  const professional3 = await prisma.professional.create({
+    data: {
+      email: 'miguel.rodriguez@technoing.es',
+      username: 'miguel_rodriguez_mep',
+      password: hashedPassword,
+      firstName: 'Miguel',
+      lastName: 'Rodríguez',
+      displayName: 'Miguel Rodríguez',
+      title: 'Senior MEP Engineer',
+      bio: 'MEP engineering specialist with expertise in smart building systems and energy-efficient designs. Innovation-driven professional.',
+      discipline: 'MECHANICAL_ENGINEERING',
+      specialties: [
+        'MEP Systems',
+        'Building Automation',
+        'Energy Efficiency',
+        'HVAC Design',
+      ],
+      yearsExperience: 10,
+      currentRole: 'Senior MEP Engineer',
+      phone: '+34 91 456 7890',
+      location: {
+        city: 'Madrid',
+        country: 'Spain',
+        timezone: 'Europe/Madrid',
+      },
+      avatar: '/avatars/professionals/miguel-rodriguez.jpg',
+      isVerified: true,
+      verifiedAt: new Date('2024-01-10'),
+      verifiedBy: 'organization-admin',
+      emailVerified: true,
+      phoneVerified: true,
+      licenses: {
+        engineer: 'COIM-2014-7890',
+        energy: 'RITE-2018-345',
+      },
+      certifications: {
+        knx: 'KNX Partner',
+        bacnet: 'BACnet Certified',
+        leed: 'LEED Green Associate',
+      },
+      education: {
+        degree: 'Industrial Engineering',
+        university: 'Universidad Politécnica de Madrid',
+        year: 2014,
+      },
+      linkedinUrl: 'https://linkedin.com/in/miguel-rodriguez-mep',
+      reputationScore: 8.6,
+      contributionScore: 8.9,
+      knowledgeShares: 52,
+      mentorshipScore: 8.2,
+      helpfulnessRating: 4.3,
+      responseTime: 2.1,
+      postsCount: 63,
+      commentsCount: 178,
+      likesReceived: 421,
+      sharesReceived: 73,
+      followersCount: 189,
+      followingCount: 95,
+      isActive: true,
+      isAvailableForWork: true,
+      isOpenToMentoring: false,
+      organizationId: org3.id,
+      employmentType: 'FULL_TIME',
+      availabilityStatus: 'AVAILABLE',
+      hourlyRate: 75,
+      privacySettings: {
+        showEmail: false,
+        showPhone: true,
+        showLocation: true,
+        showExperience: true,
+      },
+      notificationSettings: {
+        emailNotifications: true,
+        pushNotifications: false,
+        weeklyDigest: true,
+      },
+    },
+  });
+
+  console.log('✅ Part 1 completed: Core Foundation Data seeded successfully');
+
+  return {
+    constellations: [constellation1, constellation2],
+    organizations: [org1, org2, org3],
+    professionals: [professional1, professional2, professional3],
+  };
+}
+
+export { seedPart1 };

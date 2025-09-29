@@ -1,0 +1,2217 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =====================================
+// CORE DOMAIN ENTITIES
+// =====================================
+
+// 1. CONSTELLATION - Geographic cluster of interconnected projects
+model Constellation {
+  id          String @id @default(cuid())
+  name        String
+  slug        String @unique // URL-friendly identifier
+  description String?
+  
+  // Geographic & Operational Context
+  location    Json   // {lat, lng, bounds, address}
+  timezone    String @default("UTC")
+  currency    String @default("EUR")
+  language    String @default("en")
+  
+  // Ecosystem Management
+  isActive       Boolean  @default(true)
+  isPublic       Boolean  @default(false) // Public visibility
+  totalBudget    Decimal? @db.Money
+  startDate      DateTime
+  estimatedEnd   DateTime?
+  actualEnd      DateTime?
+  
+  // Network Analytics (computed fields)
+  networkDensity    Float? // Interconnection ratio
+  activityScore     Float? // Daily engagement metric
+  innovationRate    Float? // Knowledge creation velocity
+  collaborationIndex Float? // Cross-org interaction level
+  
+  // Metadata
+  metadata    Json? // Flexible additional data
+  settings    Json? // Configuration options
+  
+  // Relations
+  projects       Project[]
+  organizations  ConstellationOrganization[]
+  professionals  ConstellationProfessional[]
+  invitations    ConstellationInvitation[]
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  
+  @@map("constellations")
+  @@index([isActive, isPublic])
+  @@index([location])
+}
+
+// 2. ORGANIZATION - Companies, contractors, consultants
+model Organization {
+  id            String @id @default(cuid())
+  name          String
+  slug          String @unique
+  legalName     String?
+  description   String?
+  
+  // Organization Classification
+  type          OrganizationType
+  size          OrganizationSize?
+  industry      Industry?
+  
+  // Contact & Legal
+  email         String?
+  phone         String?
+  website       String?
+  address       Json? // Structured address
+  taxId         String?
+  
+  // Professional Credentials
+  licenses      Json? // Professional licenses
+  certifications Json? // ISO, safety certs, etc.
+  specialties   String[] // Areas of expertise
+  
+  // Reputation & Performance
+  reputationScore     Float   @default(0) @db.Real
+  projectsCompleted   Int     @default(0)
+  projectsActive      Int     @default(0)
+  averageRating       Float?  @db.Real
+  safetyScore         Float?  @db.Real
+  qualityScore        Float?  @db.Real
+  onTimeDeliveryRate  Float?  @db.Real
+  
+  // Business Metrics
+  yearEstablished     Int?
+  employeeCount       Int?
+  annualRevenue       Decimal? @db.Money
+  
+  // Platform Settings
+  isVerified    Boolean @default(false)
+  verifiedAt    DateTime?
+  verifiedBy    String?
+  isActive      Boolean @default(true)
+  
+  // Social Features
+  avatar        String?
+  banner        String?
+  socialLinks   Json? // LinkedIn, etc.
+  
+  // Relations
+  constellations    ConstellationOrganization[]
+  projects          ProjectOrganization[]
+  professionals     Professional[]
+  invitationsSent   Invitation[] @relation("InvitingSender")
+  
+  // Network Effects
+  collaborations    OrganizationCollaboration[] @relation("CollaboratorA")
+  collaboratedWith  OrganizationCollaboration[] @relation("CollaboratorB")
+  
+  // Content & Social
+  posts         Post[]
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("organizations")
+  @@index([type, isActive])
+  @@index([reputationScore])
+  @@index([isVerified])
+}
+
+// 3. PROFESSIONAL - Individual users in the system
+model Professional {
+  id          String @id @default(cuid())
+  email       String @unique
+  username    String @unique
+  password    String
+  
+  // Personal Information
+  firstName   String
+  lastName    String
+  displayName String?
+  title       String?
+  bio         String?
+  
+  // Professional Identity
+  discipline        Discipline
+  specialties       String[] // Specific skills/areas
+  yearsExperience   Int?
+  currentRole       String?
+  
+  // Contact Information
+  phone         String?
+  location      Json? // City, country, timezone
+  
+  // Platform Identity
+  avatar        String?
+  banner        String?
+  
+  // Verification & Credentials
+  isVerified     Boolean @default(false)
+  verifiedAt     DateTime?
+  verifiedBy     String?
+  emailVerified  Boolean @default(false)
+  phoneVerified  Boolean @default(false)
+  
+  // Professional Credentials
+  licenses       Json? // Professional licenses
+  certifications Json? // Certificates, trainings
+  education      Json? // Educational background
+  portfolio      Json? // Project portfolio
+  
+  // Social Profile
+  linkedinUrl    String?
+  portfolioUrl   String?
+  websiteUrl     String?
+  socialLinks    Json?
+  
+  // Reputation & Engagement
+  reputationScore       Float @default(0) @db.Real
+  contributionScore     Float @default(0) @db.Real
+  knowledgeShares       Int   @default(0)
+  mentorshipScore       Float @default(0) @db.Real
+  helpfulnessRating     Float @default(0) @db.Real
+  responseTime          Float? @db.Real // Average response time in hours
+  
+  // Activity Metrics
+  postsCount       Int @default(0)
+  commentsCount    Int @default(0)
+  likesReceived    Int @default(0)
+  sharesReceived   Int @default(0)
+  followersCount   Int @default(0)
+  followingCount   Int @default(0)
+  
+  
+  // Platform Settings
+  isActive          Boolean @default(true)
+  isAvailableForWork Boolean @default(false)
+  isOpenToMentoring  Boolean @default(false)
+  privacySettings    Json? // Granular privacy controls
+  notificationSettings Json? // Notification preferences
+  
+  // Professional Status
+  organizationId     String?
+  organization       Organization? @relation(fields: [organizationId], references: [id])
+  employmentType     EmploymentType?
+  availabilityStatus AvailabilityStatus @default(AVAILABLE)
+  hourlyRate         Decimal? @db.Money
+  
+  // Relations
+  constellations     ConstellationProfessional[]
+  projectRoles       ProjectMember[]
+  expertiseAreas     ExpertiseArea[]
+  commentLikes       CommentLike[]
+  lessonApplications LessonApplication[]
+  innovationAdoptions InnovationAdoption[]
+  innovationCollaborations InnovationCollaborator[]
+  risksIdentified    RiskFactor[]
+  attachmentsUploaded Attachment[]
+  lessonAttachmentsUploaded LessonAttachment[]
+  innovationAttachmentsUploaded InnovationAttachment[]
+  constellationInvitationsSent ConstellationInvitation[]
+  watchedTasks      TaskWatcher[]
+  
+  // Task Management
+  tasksAssigned      Task[] @relation("TaskAssignee")
+  tasksCreated       Task[] @relation("TaskCreator")
+  taskComments       TaskComment[]
+  taskAttachments    TaskAttachment[]
+    
+  // Social Features
+  posts              Post[]
+  comments           Comment[]
+  likes              Like[]
+  shares             Share[]
+  follows            Follow[] @relation("Follower")
+  followers          Follow[] @relation("Following")
+  
+  // Learning & Development
+  mentorships        Mentorship[] @relation("Mentor")
+  learning           Mentorship[] @relation("Mentee")
+  achievements       Achievement[]
+  
+  // Invitations & Networking
+  invitationsSent    Invitation[] @relation("InvitedBy")
+  invitationsReceived Invitation[] @relation("InvitedUser")
+  
+  // Knowledge & Contributions
+  lessonsContributed LessonLearned[]
+  innovations        Innovation[]
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastActiveAt DateTime @default(now())
+  
+  @@map("professionals")
+  @@index([email])
+  @@index([username])
+  @@index([discipline, isActive])
+  @@index([reputationScore])
+  @@index([organizationId])
+  @@index([isAvailableForWork])
+}
+
+// 4. PROJECT - Core work unit within constellations
+model Project {
+  id            String @id @default(cuid())
+  name          String
+  slug          String
+  description   String?
+  priority      Priority @default(MEDIUM)  
+  
+  // Project Classification
+  type          ProjectType
+  category      ProjectCategory?
+  phase         ProjectPhaseEnum @default(PLANNING)
+  status        ProjectStatus @default(ACTIVE)
+  
+  // Constellation Context
+  constellationId String
+  constellation   Constellation @relation(fields: [constellationId], references: [id], onDelete: Cascade)
+  
+  // Timeline Management
+  startDate     DateTime
+  endDate       DateTime?
+  estimatedEnd  DateTime
+  actualEnd     DateTime?
+  
+  // Budget & Financial
+  budget        Decimal? @db.Money
+  currentCost   Decimal @default(0) @db.Money
+  budgetStatus  BudgetStatus @default(ON_TRACK)
+  
+  // Location & Specifications
+  location      Json? // Specific coordinates, address
+  specifications Json? // Technical specs, requirements
+  documents     Json? // Links to external documents
+  
+  // Visibility & Collaboration
+  isPublic           Boolean @default(false)
+  allowsCollaboration Boolean @default(true)
+  sharingLevel       SharingLevel @default(CONSTELLATION)
+  
+  // Progress Tracking
+  progressPercentage Float @default(0) @db.Real
+  milestonesTotal    Int @default(0)
+  milestonesCompleted Int @default(0)
+  
+  // Quality & Safety
+  qualityScore       Float? @db.Real
+  safetyScore        Float? @db.Real
+  incidentCount      Int @default(0)
+  
+  // Metadata & Settings
+  metadata      Json? // Custom fields
+  settings      Json? // Project-specific settings
+  tags          String[] // Searchable tags
+  
+  // Relations
+  organizations    ProjectOrganization[]
+  members          ProjectMember[]
+  posts            Post[]
+  milestones       Milestone[]
+  dependencies     ProjectDependency[] @relation("DependentProject")
+  dependents       ProjectDependency[] @relation("RequiredProject")
+  
+  // Task Management
+  tasks            Task[]
+  projectPhases    ProjectPhase[]
+  
+  // Knowledge & Learning
+  lessonsLearned   LessonLearned[]
+  innovations      Innovation[]
+  riskFactors      RiskFactor[]
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
+  
+  @@map("projects")
+  @@unique([constellationId, slug])
+  @@index([constellationId, status])
+  @@index([phase, status])
+  @@index([type, category])
+  @@index([tags])
+}
+
+// =====================================
+// TASK MANAGEMENT SYSTEM
+// =====================================
+
+// PROJECT PHASES - Organizational structure for tasks
+model ProjectPhase {
+  id          String @id @default(cuid())
+  name        String
+  description String?
+  order       Int @default(0)
+  
+  // Timeline
+  startDate   DateTime?
+  endDate     DateTime?
+  
+  // Status & Progress
+  status      PhaseStatus @default(PENDING)
+  progress    Float @default(0) @db.Real
+  
+  // Budget
+  budget      Decimal? @db.Money
+  actualCost  Decimal @default(0) @db.Money
+  
+  // Relations
+  projectId   String
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
+  
+  @@map("project_phases")
+  @@index([projectId, order])
+  @@index([status])
+}
+
+// TASK - Core task management entity
+model Task {
+  id            String @id @default(cuid())
+  title         String
+  description   String?
+  
+  // Status & Priority
+  status        TaskStatus @default(TODO)
+  priority      TaskPriority @default(MEDIUM)
+  
+  // Timeline
+  startDate     DateTime?
+  dueDate       DateTime?
+  completedAt   DateTime?
+  
+  // Effort & Cost Tracking
+  estimatedHours Float? @db.Real
+  actualHours   Float @default(0) @db.Real
+  estimatedCost Float? @db.Real
+  actualCost    Float @default(0) @db.Real
+  
+  // Progress
+  progress      Float @default(0) @db.Real
+  
+  // Task Organization
+  tags          String[]
+  
+  // Enterprise Features
+  isBlocked        Boolean @default(false)
+  blockedReason    String?
+  blockedSince     DateTime?
+  requiresApproval Boolean @default(false)
+  isClientVisible  Boolean @default(false)
+  
+  // Relations
+  projectId     String
+  project       Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  phaseId       String?
+  phase         ProjectPhase? @relation(fields: [phaseId], references: [id])
+  
+  assigneeId    String?
+  assignee      Professional? @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  
+  createdById   String
+  createdBy     Professional @relation("TaskCreator", fields: [createdById], references: [id])
+  
+  // Task Hierarchy
+  parentTaskId  String?
+  parentTask    Task? @relation("TaskHierarchy", fields: [parentTaskId], references: [id])
+  subtasks      Task[] @relation("TaskHierarchy")
+  
+  // Task Dependencies
+  dependencies  TaskDependency[] @relation("DependentTask")
+  dependents    TaskDependency[] @relation("RequiredTask")
+  
+  // Social & Collaboration
+  comments      TaskComment[]
+  attachments   TaskAttachment[]
+  watchers      TaskWatcher[]
+  
+  // Integration with existing systems
+  posts         Post[] // Related posts/updates
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("tasks")
+  @@index([projectId, status])
+  @@index([assigneeId, status])
+  @@index([phaseId])
+  @@index([parentTaskId])
+  @@index([status, priority])
+  @@index([dueDate])
+  @@index([tags])
+}
+
+// TASK DEPENDENCIES
+model TaskDependency {
+  id              String @id @default(cuid())
+  
+  // Dependency Details
+  dependencyType  TaskDependencyType @default(FINISH_TO_START)
+  description     String?
+  lagTime         Float @default(0) @db.Real // Days
+  
+  // Status
+  status          DependencyStatus @default(PENDING)
+  
+  // Relations
+  dependentId     String
+  dependent       Task @relation("DependentTask", fields: [dependentId], references: [id], onDelete: Cascade)
+  requiredId      String
+  required        Task @relation("RequiredTask", fields: [requiredId], references: [id], onDelete: Cascade)
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
+  
+  @@unique([dependentId, requiredId])
+  @@map("task_dependencies")
+  @@index([dependencyType])
+  @@index([status])
+}
+
+// TASK COMMENTS
+model TaskComment {
+  id          String @id @default(cuid())
+  content     String
+  
+  // Comment Threading
+  parentId    String?
+  parent      TaskComment? @relation("TaskCommentReplies", fields: [parentId], references: [id])
+  replies     TaskComment[] @relation("TaskCommentReplies")
+  
+  // Status
+  isEdited    Boolean @default(false)
+  editedAt    DateTime?
+  
+  // Relations
+  taskId      String
+  task        Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      Professional @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("task_comments")
+  @@index([taskId])
+  @@index([authorId])
+  @@index([parentId])
+}
+
+// TASK ATTACHMENTS
+model TaskAttachment {
+  id          String @id @default(cuid())
+  fileName    String
+  fileUrl     String
+  fileType    String
+  mimeType    String
+  fileSize    Int
+  description String?
+  
+  // Relations
+  taskId      String
+  task        Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy  String
+  uploader    Professional @relation(fields: [uploadedBy], references: [id], onDelete: Cascade)
+  
+  // Audit
+  uploadedAt DateTime @default(now())
+  
+  @@map("task_attachments")
+  @@index([taskId])
+  @@index([uploadedBy])
+}
+
+// TASK WATCHERS - People following task updates
+model TaskWatcher {
+  id             String @id @default(cuid())
+  
+  // Watch Settings
+  watchLevel     WatchLevel @default(ALL_UPDATES)
+  
+  // Relations
+  taskId         String
+  task           Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  
+  // Audit
+  createdAt DateTime @default(now())
+  
+  @@unique([taskId, professionalId])
+  @@map("task_watchers")
+  @@index([taskId])
+  @@index([professionalId])
+}
+
+// =====================================
+// RELATIONSHIP ENTITIES (Many-to-Many)
+// =====================================
+
+// 5. CONSTELLATION-ORGANIZATION Relationship
+model ConstellationOrganization {
+  id              String @id @default(cuid())
+  
+  // Relationship Context
+  role            ConstellationRole
+  status          MembershipStatus @default(ACTIVE)
+  joinedAt        DateTime @default(now())
+  leftAt          DateTime?
+  
+  // Permissions & Access
+  permissions     Json? // Granular permissions
+  accessLevel     AccessLevel @default(MEMBER)
+  
+  // Performance in Constellation
+  projectsActive     Int @default(0)
+  projectsCompleted  Int @default(0)
+  contributionScore  Float @default(0) @db.Real
+  networkConnections Int @default(0)
+  reputationInNetwork Float @default(0) @db.Real
+  
+  // Relations
+  constellationId String
+  constellation   Constellation @relation(fields: [constellationId], references: [id], onDelete: Cascade)
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([constellationId, organizationId])
+  @@map("constellation_organizations")
+  @@index([constellationId, status])
+  @@index([role, status])
+}
+
+// 6. CONSTELLATION-PROFESSIONAL Relationship
+model ConstellationProfessional {
+  id               String @id @default(cuid())
+  
+  // Relationship Context
+  status           MembershipStatus @default(ACTIVE)
+  joinedAt         DateTime @default(now())
+  leftAt           DateTime?
+  invitedBy        String?
+  
+  // Access & Permissions
+  accessLevel      AccessLevel @default(MEMBER)
+  permissions      Json? // Granular permissions
+  
+  // Performance Metrics in Constellation
+  projectsActive      Int @default(0)
+  projectsCompleted   Int @default(0)
+  contributionScore   Float @default(0) @db.Real
+  networkConnections  Int @default(0)
+  knowledgeContributions Int @default(0)
+  mentorshipCount     Int @default(0)
+  
+  // Engagement Metrics
+  postsInConstellation    Int @default(0)
+  commentsInConstellation Int @default(0)
+  likesInConstellation    Int @default(0)
+  
+  // Relations
+  constellationId  String
+  constellation    Constellation @relation(fields: [constellationId], references: [id], onDelete: Cascade)
+  professionalId   String
+  professional     Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([constellationId, professionalId])
+  @@map("constellation_professionals")
+  @@index([constellationId, status])
+  @@index([contributionScore])
+}
+
+// 7. PROJECT-ORGANIZATION Relationship
+model ProjectOrganization {
+  id               String @id @default(cuid())
+  
+  // Role & Responsibility
+  role             ProjectOrganizationRole
+  responsibility   String? // Specific responsibilities
+  isPrimary        Boolean @default(false) // Main contractor flag
+  
+  // Contract & Financial
+  contractValue    Decimal? @db.Money
+  contractStart    DateTime?
+  contractEnd      DateTime?
+  contractStatus   ContractStatus @default(ACTIVE)
+  
+  // Performance
+  performanceScore Float? @db.Real
+  completionRate   Float @default(0) @db.Real
+  qualityRating    Float? @db.Real
+  timelyDelivery   Boolean @default(true)
+  
+  // Relations
+  projectId        String
+  project          Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([projectId, organizationId])
+  @@map("project_organizations")
+  @@index([projectId, role])
+  @@index([organizationId, contractStatus])
+}
+
+// 8. PROJECT-PROFESSIONAL Relationship
+model ProjectMember {
+  id               String @id @default(cuid())
+  
+  // Role & Access
+  role             ProjectRole
+  title            String? // Specific job title
+  responsibilities String? // Detailed responsibilities
+  accessLevel      AccessLevel @default(MEMBER)
+  
+  // Timeline
+  joinedAt         DateTime @default(now())
+  leftAt           DateTime?
+  isActive         Boolean @default(true)
+  
+  // Performance & Contribution
+  contributionScore Float @default(0) @db.Real
+  hoursLogged      Float @default(0) @db.Real
+  tasksCompleted   Int @default(0)
+  performanceRating Float? @db.Real
+  
+  // Relations
+  projectId        String
+  project          Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  professionalId   String
+  professional     Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([projectId, professionalId])
+  @@map("project_members")
+  @@index([projectId, role])
+  @@index([professionalId, isActive])
+}
+
+// =====================================
+// SOCIAL & COLLABORATION FEATURES
+// =====================================
+
+// 9. POST - Social content creation
+model Post {
+  id          String @id @default(cuid())
+  content     String
+  
+  // Content Classification
+  type        PostType @default(GENERAL)
+  category    PostCategory?
+  priority    Priority @default(MEDIUM)
+  
+  // Visibility & Reach
+  visibility     VisibilityLevel @default(PROJECT)
+  sharingLevel   SharingLevel @default(PROJECT)
+  
+  // Content Metadata
+  tags           String[] // Hashtags, keywords
+  mentions       String[] // @mentioned user IDs
+  
+  // Cross-project Intelligence
+  relatedProjects   String[] // Project IDs
+  relatedTopics     String[] // Topic keywords
+  knowledgeCategory KnowledgeCategory?
+  
+  // Engagement Metrics
+  viewCount      Int @default(0)
+  shareCount     Int @default(0)
+  commentCount   Int @default(0)
+  likeCount      Int @default(0)
+  
+  // Status & Moderation
+  status         PostStatus @default(PUBLISHED)
+  isEdited       Boolean @default(false)
+  editedAt       DateTime?
+  
+  // Relations
+  authorId       String
+  author         Professional @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  projectId      String?
+  project        Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Task Integration
+  taskId         String?
+  task           Task? @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  // Social Interactions
+  comments       Comment[]
+  likes          Like[]
+  shares         Share[]
+  attachments    Attachment[]
+  
+  // Knowledge Management
+  lessonLearned  LessonLearned?
+  innovation     Innovation?
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("posts")
+  @@index([authorId, status])
+  @@index([projectId, type])
+  @@index([taskId])
+  @@index([visibility, status])
+  @@index([type, category])
+  @@index([tags])
+  @@index([createdAt])
+}
+
+// 10. COMMENT - Responses to posts
+model Comment {
+  id          String @id @default(cuid())
+  content     String
+  
+  // Comment Threading
+  parentId    String?
+  parent      Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies     Comment[] @relation("CommentReplies")
+  depth       Int @default(0)
+  
+  // Engagement
+  likeCount   Int @default(0)
+  replyCount  Int @default(0)
+  
+  // Status
+  status      CommentStatus @default(PUBLISHED)
+  isEdited    Boolean @default(false)
+  editedAt    DateTime?
+  
+  // Relations
+  postId         String
+  post           Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId       String
+  author         Professional @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  // Social Interactions
+  likes          CommentLike[]
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("comments")
+  @@index([postId, status])
+  @@index([authorId])
+  @@index([parentId])
+  @@index([createdAt])
+}
+
+// 11. LIKE - Social appreciation
+model Like {
+  id             String @id @default(cuid())
+  
+  // Relations
+  postId         String
+  post           Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  
+  // Audit
+  createdAt DateTime @default(now())
+  
+  @@unique([postId, professionalId])
+  @@map("likes")
+  @@index([postId])
+  @@index([professionalId])
+}
+
+// 12. COMMENT LIKE
+model CommentLike {
+  id             String @id @default(cuid())
+  
+  // Relations
+  commentId      String
+  comment        Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  
+  // Audit
+  createdAt DateTime @default(now())
+  
+  @@unique([commentId, professionalId])
+  @@map("comment_likes")
+  @@index([commentId])
+  @@index([professionalId])
+}
+
+// 13. SHARE - Content sharing
+model Share {
+  id             String @id @default(cuid())
+  shareNote      String? // Optional note when sharing
+  
+  // Share Context
+  shareType      ShareType @default(INTERNAL)
+  visibility     VisibilityLevel @default(PROJECT)
+  
+  // Relations
+  postId         String
+  post           Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  sharedById     String
+  sharedBy       Professional @relation(fields: [sharedById], references: [id], onDelete: Cascade)
+  
+  // Target Context (optional)
+  targetProjectId String?
+  
+  // Audit
+  createdAt DateTime @default(now())
+  
+  @@map("shares")
+  @@index([postId])
+  @@index([sharedById])
+  @@index([shareType])
+}
+
+// 14. FOLLOW - Professional networking
+model Follow {
+  id           String @id @default(cuid())
+  
+  // Relations
+  followerId   String
+  follower     Professional @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId  String
+  following    Professional @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+  
+  // Follow Context
+  source       FollowSource @default(MANUAL) // How the follow happened
+  
+  // Audit
+  createdAt DateTime @default(now())
+  
+  @@unique([followerId, followingId])
+  @@map("follows")
+  @@index([followerId])
+  @@index([followingId])
+}
+
+// =====================================
+// KNOWLEDGE MANAGEMENT
+// =====================================
+
+// 15. LESSON LEARNED - Captured knowledge
+model LessonLearned {
+  id             String @id @default(cuid())
+  title          String
+  description    String
+  
+  // Classification
+  category       KnowledgeCategory
+  subcategory    String?
+  difficulty     DifficultyLevel @default(INTERMEDIATE)
+  
+  // Problem Context
+  problemDescription String?
+  rootCause         String?
+  solution          String?
+  prevention        String?
+  
+  // Impact & Validation
+  impactLevel       ImpactLevel
+  costImpact        Decimal? @db.Money
+  timeImpact        Float? // Hours saved/lost
+  qualityImpact     String?
+  
+  // Validation & Approval
+  validationStatus  ValidationStatus @default(PENDING)
+  validatedBy       String?
+  validatedAt       DateTime?
+  
+  // Sharing & Reuse
+  visibility        VisibilityLevel @default(PROJECT)
+  isTemplate        Boolean @default(false)
+  reusedCount       Int @default(0)
+  ratingAverage     Float? @db.Real
+  ratingCount       Int @default(0)
+  
+  // Tags & Search
+  tags              String[]
+  keywords          String[]
+  
+  // Relations
+  projectId         String
+  project           Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  contributorId     String
+  contributor       Professional @relation(fields: [contributorId], references: [id], onDelete: Cascade)
+  
+  postId            String? @unique
+  post              Post? @relation(fields: [postId], references: [id])
+  
+  // Cross-project Usage
+  applications      LessonApplication[]
+  attachments       LessonAttachment[]
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("lessons_learned")
+  @@index([category, visibility])
+  @@index([projectId])
+  @@index([contributorId])
+  @@index([validationStatus])
+  @@index([tags])
+}
+
+// 16. LESSON APPLICATION - Cross-project reuse
+model LessonApplication {
+  id              String @id @default(cuid())
+  
+  // Application Context
+  applicationNote String?
+  adaptations     String? // How the lesson was modified
+  context         String? // Specific situation where applied
+  
+  // Results & Feedback
+  successRating   Int? // 1-5 stars
+  resultDescription String?
+  impactMeasured  Json? // Specific metrics
+  wouldRecommend  Boolean?
+  
+  // Relations
+  lessonId        String
+  lesson          LessonLearned @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  projectId       String
+  appliedById     String
+  appliedBy       Professional @relation(fields: [appliedById], references: [id], onDelete: Cascade)
+  
+  // Audit
+  appliedAt DateTime @default(now())
+  completedAt DateTime?
+  
+  @@map("lesson_applications")
+  @@index([lessonId])
+  @@index([projectId])
+  @@index([appliedById])
+}
+
+// 17. INNOVATION - New solutions and improvements
+model Innovation {
+  id             String @id @default(cuid())
+  title          String
+  description    String
+  
+  // Innovation Classification
+  category       InnovationCategory
+  type           InnovationType
+  maturityLevel  MaturityLevel @default(CONCEPT)
+  
+  // Innovation Details
+  problemSolved  String?
+  solution       String?
+  benefits       String?
+  requirements   String?
+  limitations    String?
+  
+  // Impact Metrics
+  adoptionRate   Float @default(0) @db.Real
+  successRate    Float? @db.Real
+  costImpact     Decimal? @db.Money
+  timeImpact     Float? // % improvement
+  qualityImpact  String?
+  safetyImpact   String?
+  
+  // Intellectual Property
+  isPatentable   Boolean @default(false)
+  isOpenSource   Boolean @default(true)
+  licenseType    String?
+  ipStatus       IPStatus @default(OPEN)
+  
+  // Validation & Testing
+  testingStatus  TestingStatus @default(UNTESTED)
+  testResults    Json?
+  validationData Json?
+  
+  // Visibility & Sharing
+  visibility     VisibilityLevel @default(PROJECT)
+  sharingLevel   SharingLevel @default(CONSTELLATION)
+  
+  // Tags & Search
+  tags           String[]
+  keywords       String[]
+  
+  // Relations
+  originProjectId String
+  originProject   Project @relation(fields: [originProjectId], references: [id], onDelete: Cascade)
+  innovatorId     String
+  innovator       Professional @relation(fields: [innovatorId], references: [id], onDelete: Cascade)
+  
+  postId          String? @unique
+  post            Post? @relation(fields: [postId], references: [id])
+  
+  // Network Effects
+  adoptions       InnovationAdoption[]
+  collaborators   InnovationCollaborator[]
+  attachments     InnovationAttachment[]
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("innovations")
+  @@index([category, type])
+  @@index([originProjectId])
+  @@index([innovatorId])
+  @@index([adoptionRate])
+  @@index([tags])
+}
+
+// =====================================
+// SUPPORTING ENTITIES
+// =====================================
+
+// 18. PROJECT DEPENDENCIES
+model ProjectDependency {
+  id              String @id @default(cuid())
+  
+  // Dependency Details
+  dependencyType  DependencyType
+  description     String?
+  criticalPath    Boolean @default(false)
+  
+  // Timeline Impact
+  leadTime        Float? // Days needed
+  bufferTime      Float? // Safety buffer
+  
+  // Status Tracking
+  status          DependencyStatus @default(PENDING)
+  resolvedAt      DateTime?
+  
+  // Relations
+  dependentId     String
+  dependent       Project @relation("DependentProject", fields: [dependentId], references: [id], onDelete: Cascade)
+  requiredId      String
+  required        Project @relation("RequiredProject", fields: [requiredId], references: [id], onDelete: Cascade)
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
+  
+  @@unique([dependentId, requiredId])
+  @@map("project_dependencies")
+  @@index([dependencyType])
+  @@index([status])
+}
+
+// 19. MILESTONES
+model Milestone {
+  id            String @id @default(cuid())
+  name          String
+  description   String?
+  
+  // Timeline
+  targetDate    DateTime
+  actualDate    DateTime?
+  
+  // Status & Progress
+  status        MilestoneStatus @default(PENDING)
+  progressPercentage Float @default(0) @db.Real
+  
+  // Importance
+  isRequired    Boolean @default(true)
+  weight        Float @default(1) @db.Real // Relative importance
+  
+  // Relations
+  projectId     String
+  project       Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  // Dependencies
+  dependencies  String[] // Other milestone IDs
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
+  
+  @@map("milestones")
+  @@index([projectId, status])
+  @@index([targetDate])
+}
+
+// 20. EXPERTISE AREAS
+model ExpertiseArea {
+  id             String @id @default(cuid())
+  name           String
+  category       Discipline
+  subcategory    String?
+  
+  // Skill Level
+  level          ExpertiseLevel
+  yearsExperience Int?
+  
+  // Validation & Evidence
+  isVerified     Boolean @default(false)
+  verifiedBy     String?
+  verifiedAt     DateTime?
+  evidence       Json? // Projects, certifications, etc.
+  
+  // Market Dynamics
+  demandScore    Float @default(0) @db.Real // How often requested
+  supplyScore    Float @default(0) @db.Real // How many have this
+  
+  // Relations
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("expertise_areas")
+  @@index([professionalId])
+  @@index([category, level])
+  @@index([demandScore])
+}
+
+// 21. ORGANIZATION COLLABORATIONS
+model OrganizationCollaboration {
+  id              String @id @default(cuid())
+  
+  // Collaboration Context
+  projectContext  String? // Which project brought them together
+  collaborationType CollaborationType
+  
+  // Performance Metrics
+  projectsShared     Int @default(1)
+  successRate        Float? @db.Real
+  collaborationScore Float @default(0) @db.Real
+  averageRating      Float? @db.Real
+  
+  // Status
+  status          CollaborationStatus @default(ACTIVE)
+  
+  // Relations
+  orgAId          String
+  orgA            Organization @relation("CollaboratorA", fields: [orgAId], references: [id], onDelete: Cascade)
+  orgBId          String
+  orgB            Organization @relation("CollaboratorB", fields: [orgBId], references: [id], onDelete: Cascade)
+  
+  // Audit
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  updatedAt DateTime @updatedAt
+  
+  @@unique([orgAId, orgBId])
+  @@map("organization_collaborations")
+  @@index([collaborationType])
+  @@index([status])
+}
+
+// 22. INNOVATION ADOPTION
+model InnovationAdoption {
+  id              String @id @default(cuid())
+  
+  // Adoption Context
+  adoptionType    AdoptionType
+  adaptations     String? // How it was modified
+  implementationNotes String?
+  
+  // Implementation Details
+  implementationDate DateTime?
+  completionDate  DateTime?
+  effort          Float? // Person-hours invested
+  cost            Decimal? @db.Money
+  
+  // Results & Impact
+  successRating   Int? // 1-5 stars
+  results         Json? // Measured outcomes
+  lessonsLearned  String?
+  wouldRecommend  Boolean?
+  
+  // Performance Metrics
+  timeToImplement Float? // Days from adoption to implementation
+  adoptionSuccess Boolean @default(true)
+  
+  // Relations
+  innovationId    String
+  innovation      Innovation @relation(fields: [innovationId], references: [id], onDelete: Cascade)
+  projectId       String
+  adoptedById     String
+  adoptedBy       Professional @relation(fields: [adoptedById], references: [id], onDelete: Cascade)
+  
+  // Audit
+  adoptedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("innovation_adoptions")
+  @@index([innovationId])
+  @@index([projectId])
+  @@index([adoptedById])
+  @@index([successRating])
+}
+
+// 23. INNOVATION COLLABORATORS
+model InnovationCollaborator {
+  id              String @id @default(cuid())
+  role            CollaboratorRole
+  contribution    String?
+  contributionType ContributionType
+  
+  // Contribution Metrics
+  timeInvested    Float? // Hours contributed
+  expertise       String? // What expertise they brought
+  
+  // Relations
+  innovationId    String
+  innovation      Innovation @relation(fields: [innovationId], references: [id], onDelete: Cascade)
+  professionalId  String
+  professional    Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  
+  // Audit
+  joinedAt DateTime @default(now())
+  
+  @@unique([innovationId, professionalId])
+  @@map("innovation_collaborators")
+  @@index([innovationId])
+  @@index([professionalId])
+  @@index([role])
+}
+
+// 24. MENTORSHIP
+model Mentorship {
+  id         String @id @default(cuid())
+  
+  // Mentorship Details
+  status     MentorshipStatus @default(ACTIVE)
+  goals      String?
+  focus      String? // Areas of focus
+  frequency  String? // Meeting frequency
+  
+  // Progress Tracking
+  sessionsCompleted Int @default(0)
+  progress   String? // Progress notes
+  feedback   String? // Mutual feedback
+  
+  // Outcome Metrics
+  satisfaction Float? @db.Real // 1-5 rating
+  effectiveness Float? @db.Real // 1-5 rating
+  
+  // Relations
+  mentorId   String
+  mentor     Professional @relation("Mentor", fields: [mentorId], references: [id], onDelete: Cascade)
+  menteeId   String
+  mentee     Professional @relation("Mentee", fields: [menteeId], references: [id], onDelete: Cascade)
+  
+  // Audit
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  updatedAt DateTime @updatedAt
+  
+  @@unique([mentorId, menteeId])
+  @@map("mentorships")
+  @@index([mentorId, status])
+  @@index([menteeId, status])
+}
+
+// 25. ACHIEVEMENTS
+model Achievement {
+  id             String @id @default(cuid())
+  name           String
+  description    String
+  category       AchievementCategory
+  
+  // Achievement Details
+  points         Int @default(0)
+  level          AchievementLevel @default(BRONZE)
+  rarity         AchievementRarity @default(COMMON)
+  
+  // Visual
+  icon           String?
+  badge          String?
+  color          String?
+  
+  // Progress Tracking
+  isRepeatable   Boolean @default(false)
+  timesEarned    Int @default(1)
+  
+  // Relations
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  
+  // Context
+  contextType    String? // "project", "constellation", "global"
+  contextId      String? // ID of the context
+  
+  // Audit
+  earnedAt DateTime @default(now())
+  
+  @@map("achievements")
+  @@index([professionalId])
+  @@index([category])
+  @@index([earnedAt])
+}
+
+// 26. RISK FACTORS
+model RiskFactor {
+  id          String @id @default(cuid())
+  name        String
+  description String
+  category    RiskCategory
+  
+  // Risk Assessment
+  probability Float @db.Real // 0-1
+  impact      Float @db.Real // 0-1
+  riskScore   Float @db.Real // Calculated: probability * impact
+  
+  // Management
+  mitigation  String?
+  contingency String?
+  owner       String? // Professional ID responsible
+  
+  // Status
+  status      RiskStatus @default(IDENTIFIED)
+  priority    Priority @default(MEDIUM)
+  
+  // Timeline
+  identifiedAt DateTime @default(now())
+  targetDate   DateTime? // When to address
+  resolvedAt   DateTime?
+  
+  // Relations
+  projectId   String
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  identifiedBy String
+  identifier  Professional @relation(fields: [identifiedBy], references: [id], onDelete: Cascade)
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("risk_factors")
+  @@index([projectId, status])
+  @@index([category])
+  @@index([riskScore])
+  @@index([priority])
+}
+
+// 27. ATTACHMENTS
+model Attachment {
+  id       String @id @default(cuid())
+  fileName String
+  fileUrl  String
+  fileType AttachmentType
+  mimeType String
+  fileSize Int
+  
+  // Metadata
+  title       String?
+  description String?
+  tags        String[]
+  
+  // Image/Video specific
+  dimensions  Json? // {width, height}
+  duration    Float? // For videos/audio
+  thumbnail   String? // Thumbnail URL
+  
+  // Access Control
+  visibility  VisibilityLevel @default(PROJECT)
+  isPublic    Boolean @default(false)
+  
+  // Relations
+  uploadedById String
+  uploadedBy   Professional @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  
+  // Context (polymorphic)
+  postId       String?
+  post         Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  // Audit
+  uploadedAt DateTime @default(now())
+  
+  @@map("attachments")
+  @@index([postId])
+  @@index([uploadedById])
+  @@index([fileType])
+}
+
+// 28. LESSON ATTACHMENTS
+model LessonAttachment {
+  id          String @id @default(cuid())
+  fileName    String
+  fileUrl     String
+  fileType    String
+  fileSize    Int
+  description String?
+  
+  // Relations
+  lessonId    String
+  lesson      LessonLearned @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  uploadedBy  String
+  uploader    Professional @relation(fields: [uploadedBy], references: [id], onDelete: Cascade)
+  
+  // Audit
+  uploadedAt DateTime @default(now())
+  
+  @@map("lesson_attachments")
+  @@index([lessonId])
+  @@index([uploadedBy])
+}
+
+// 29. INNOVATION ATTACHMENTS
+model InnovationAttachment {
+  id          String @id @default(cuid())
+  fileName    String
+  fileUrl     String
+  fileType    String
+  fileSize    Int
+  description String?
+  
+  // Relations
+  innovationId String
+  innovation   Innovation @relation(fields: [innovationId], references: [id], onDelete: Cascade)
+  uploadedBy   String
+  uploader     Professional @relation(fields: [uploadedBy], references: [id], onDelete: Cascade)
+  
+  // Audit
+  uploadedAt DateTime @default(now())
+  
+  @@map("innovation_attachments")
+  @@index([innovationId])
+  @@index([uploadedBy])
+}
+
+// 30. INVITATIONS
+model Invitation {
+  id          String @id @default(cuid())
+  email       String
+  role        String? // Intended role
+  message     String? // Personal message
+  
+  // Invitation Context
+  type        InvitationType
+  status      InvitationStatus @default(PENDING)
+  
+  // Target Context
+  constellationId String?
+  projectId       String?
+  organizationId  String?
+  
+  // Expiration
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  rejectedAt  DateTime?
+  
+  // Relations
+  invitedById String?
+  invitedBy   Professional? @relation("InvitedBy", fields: [invitedById], references: [id])
+  
+  invitedUserId String?
+  invitedUser   Professional? @relation("InvitedUser", fields: [invitedUserId], references: [id])
+  
+  organizationSenderId String?
+  organizationSender   Organization? @relation("InvitingSender", fields: [organizationSenderId], references: [id])
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("invitations")
+  @@index([email, status])
+  @@index([type, status])
+  @@index([expiresAt])
+}
+
+// 31. CONSTELLATION INVITATIONS
+model ConstellationInvitation {
+  id              String @id @default(cuid())
+  email           String
+  role            ConstellationRole
+  message         String?
+  
+  // Status
+  status          InvitationStatus @default(PENDING)
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  rejectedAt      DateTime?
+  
+  // Relations
+  constellationId String
+  constellation   Constellation @relation(fields: [constellationId], references: [id], onDelete: Cascade)
+  invitedById     String?
+  invitedBy       Professional? @relation(fields: [invitedById], references: [id])
+  
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("constellation_invitations")
+  @@index([constellationId, status])
+  @@index([email])
+}
+
+// =====================================
+// ENUMS
+// =====================================
+
+enum OrganizationType {
+  GENERAL_CONTRACTOR
+  SUBCONTRACTOR
+  SPECIALTY_CONTRACTOR
+  ARCHITECT
+  ENGINEER_STRUCTURAL
+  ENGINEER_MEP
+  ENGINEER_CIVIL
+  CONSULTANT
+  SUPPLIER
+  MANUFACTURER
+  DEVELOPER
+  OWNER
+  GOVERNMENT
+  ASSOCIATION
+  OTHER
+}
+
+enum OrganizationSize {
+  FREELANCER
+  STARTUP
+  SMALL         // 1-50 employees
+  MEDIUM        // 51-250 employees
+  LARGE         // 251-1000 employees
+  ENTERPRISE    // 1000+ employees
+}
+
+enum Industry {
+  RESIDENTIAL
+  COMMERCIAL
+  INDUSTRIAL
+  INFRASTRUCTURE
+  HEALTHCARE
+  EDUCATION
+  HOSPITALITY
+  RETAIL
+  MIXED_USE
+  OTHER
+}
+
+enum ConstellationRole {
+  MASTER_DEVELOPER
+  GENERAL_CONTRACTOR
+  PRIME_CONTRACTOR
+  SUBCONTRACTOR
+  ARCHITECT
+  ENGINEER
+  CONSULTANT
+  SUPPLIER
+  GOVERNMENT
+  OBSERVER
+  STAKEHOLDER
+}
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  BANNED
+  LEFT
+}
+
+enum AccessLevel {
+  VIEWER
+  MEMBER
+  CONTRIBUTOR
+  MODERATOR
+  ADMIN
+  OWNER
+}
+
+enum Discipline {
+  ARCHITECTURE
+  STRUCTURAL_ENGINEERING
+  MECHANICAL_ENGINEERING
+  ELECTRICAL_ENGINEERING
+  PLUMBING_ENGINEERING
+  CIVIL_ENGINEERING
+  ENVIRONMENTAL_ENGINEERING
+  FIRE_PROTECTION
+  PROJECT_MANAGEMENT
+  CONSTRUCTION_MANAGEMENT
+  SAFETY_MANAGEMENT
+  QUALITY_CONTROL
+  BIM_MANAGEMENT
+  SURVEYING
+  COST_ESTIMATION
+  SCHEDULING
+  PROCUREMENT
+  COMMISSIONING
+  FACILITY_MANAGEMENT
+  OTHER
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACTOR
+  FREELANCER
+  CONSULTANT
+  INTERN
+}
+
+enum AvailabilityStatus {
+  AVAILABLE
+  BUSY
+  PARTIALLY_AVAILABLE
+  UNAVAILABLE
+  ON_LEAVE
+}
+
+enum ProjectType {
+  NEW_CONSTRUCTION
+  RENOVATION
+  RESTORATION
+  ADDITION
+  TENANT_IMPROVEMENT
+  INFRASTRUCTURE
+  CIVIL_WORKS
+  DEMOLITION
+  OTHER
+}
+
+enum ProjectCategory {
+  RESIDENTIAL_SINGLE
+  RESIDENTIAL_MULTI
+  COMMERCIAL_OFFICE
+  COMMERCIAL_RETAIL
+  COMMERCIAL_HOSPITALITY
+  INDUSTRIAL_MANUFACTURING
+  INDUSTRIAL_WAREHOUSE
+  INFRASTRUCTURE_TRANSPORT
+  INFRASTRUCTURE_UTILITIES
+  HEALTHCARE_HOSPITAL
+  HEALTHCARE_CLINIC
+  EDUCATION_SCHOOL
+  EDUCATION_UNIVERSITY
+  GOVERNMENT_CIVIC
+  RELIGIOUS
+  MIXED_USE
+  OTHER
+}
+
+enum ProjectPhaseEnum {
+  INITIATION
+  PLANNING
+  DESIGN_CONCEPTUAL
+  DESIGN_SCHEMATIC
+  DESIGN_DEVELOPMENT
+  CONSTRUCTION_DOCUMENTS
+  PROCUREMENT
+  CONSTRUCTION
+  COMMISSIONING
+  HANDOVER
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ON_HOLD
+  CANCELLED
+  COMPLETED
+  ARCHIVED
+}
+
+enum BudgetStatus {
+  UNDER_BUDGET
+  ON_TRACK
+  OVER_BUDGET
+  CRITICAL
+}
+
+enum Priority {
+  VERY_LOW
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+enum SharingLevel {
+  PRIVATE
+  TEAM
+  PROJECT
+  ORGANIZATION
+  CONSTELLATION
+  NETWORK
+  PUBLIC
+}
+
+enum VisibilityLevel {
+  PRIVATE
+  TEAM
+  PROJECT
+  ORGANIZATION
+  CONSTELLATION
+  NETWORK
+  PUBLIC
+}
+
+enum ProjectOrganizationRole {
+  OWNER
+  DEVELOPER
+  GENERAL_CONTRACTOR
+  PRIME_CONTRACTOR
+  SUBCONTRACTOR
+  ARCHITECT
+  ENGINEER
+  CONSULTANT
+  SUPPLIER
+  INSPECTOR
+  OTHER
+}
+
+enum ContractStatus {
+  DRAFT
+  NEGOTIATION
+  ACTIVE
+  COMPLETED
+  TERMINATED
+  DISPUTED
+}
+
+enum ProjectRole {
+  PROJECT_MANAGER
+  SITE_MANAGER
+  FOREMAN
+  SUPERINTENDENT
+  ARCHITECT
+  ENGINEER
+  DESIGNER
+  COORDINATOR
+  INSPECTOR
+  SAFETY_OFFICER
+  QUALITY_MANAGER
+  SCHEDULER
+  ESTIMATOR
+  PROCUREMENT
+  ADMINISTRATIVE
+  LABORER
+  TECHNICIAN
+  SPECIALIST
+  CONSULTANT
+  OTHER
+}
+
+enum PostType {
+  GENERAL
+  PROGRESS_UPDATE
+  ISSUE_REPORT
+  QUESTION
+  KNOWLEDGE_SHARE
+  LESSON_LEARNED
+  INNOVATION
+  ANNOUNCEMENT
+  MILESTONE
+  SAFETY_ALERT
+  QUALITY_ISSUE
+  SCHEDULE_UPDATE
+  BUDGET_UPDATE
+  CHANGE_ORDER
+  RFI
+  SUBMITTAL
+  OTHER
+}
+
+enum PostCategory {
+  TECHNICAL
+  SAFETY
+  QUALITY
+  SCHEDULE
+  BUDGET
+  COORDINATION
+  DESIGN
+  CONSTRUCTION
+  COMMISSIONING
+  GENERAL
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  DELETED
+  FLAGGED
+}
+
+enum CommentStatus {
+  PUBLISHED
+  FLAGGED
+  DELETED
+}
+
+enum ShareType {
+  INTERNAL
+  EXTERNAL
+  CROSS_PROJECT
+  CROSS_CONSTELLATION
+}
+
+enum FollowSource {
+  MANUAL
+  SUGGESTION
+  PROJECT_COLLABORATION
+  ORGANIZATION
+  CONSTELLATION
+  MUTUAL_CONNECTION
+}
+
+enum KnowledgeCategory {
+  TECHNICAL_SOLUTION
+  PROCESS_IMPROVEMENT
+  SAFETY_PRACTICE
+  QUALITY_CONTROL
+  COST_OPTIMIZATION
+  TIME_MANAGEMENT
+  RESOURCE_MANAGEMENT
+  COMMUNICATION
+  COORDINATION
+  INNOVATION
+  RISK_MITIGATION
+  LESSONS_LEARNED
+  BEST_PRACTICE
+  TROUBLESHOOTING
+  OTHER
+}
+
+enum DifficultyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum ImpactLevel {
+  MINIMAL
+  LOW
+  MEDIUM
+  HIGH
+  TRANSFORMATIONAL
+}
+
+enum ValidationStatus {
+  PENDING
+  UNDER_REVIEW
+  VALIDATED
+  REJECTED
+  NEEDS_REVISION
+}
+
+enum InnovationCategory {
+  TECHNOLOGY
+  PROCESS
+  MATERIAL
+  METHOD
+  TOOL
+  EQUIPMENT
+  SOFTWARE
+  SAFETY
+  SUSTAINABILITY
+  EFFICIENCY
+  QUALITY
+  COST_REDUCTION
+  OTHER
+}
+
+enum InnovationType {
+  INCREMENTAL
+  RADICAL
+  DISRUPTIVE
+  ARCHITECTURAL
+  MODULAR
+}
+
+enum MaturityLevel {
+  CONCEPT
+  PROTOTYPE
+  PILOT
+  TESTED
+  PROVEN
+  MATURE
+}
+
+enum IPStatus {
+  OPEN
+  PROPRIETARY
+  PATENT_PENDING
+  PATENTED
+  TRADE_SECRET
+  LICENSED
+}
+
+enum TestingStatus {
+  UNTESTED
+  PLANNING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  VALIDATED
+}
+
+enum DependencyType {
+  FINISH_TO_START
+  START_TO_START
+  FINISH_TO_FINISH
+  START_TO_FINISH
+  RESOURCE_DEPENDENCY
+  TECHNICAL_DEPENDENCY
+  REGULATORY_DEPENDENCY
+  COORDINATION_DEPENDENCY
+}
+
+enum DependencyStatus {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+  BLOCKED
+  CANCELLED
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+  CANCELLED
+}
+
+enum ExpertiseLevel {
+  BEGINNER      // 0-2 years
+  INTERMEDIATE  // 2-5 years
+  ADVANCED      // 5-10 years
+  EXPERT        // 10+ years
+  THOUGHT_LEADER // Recognized industry expert
+}
+
+enum CollaborationType {
+  STRATEGIC_PARTNERSHIP
+  PROJECT_BASED
+  SUBCONTRACTOR
+  SUPPLIER
+  JOINT_VENTURE
+  CONSULTING
+  ONE_TIME
+  ONGOING
+}
+
+enum CollaborationStatus {
+  ACTIVE
+  INACTIVE
+  COMPLETED
+  TERMINATED
+  SUSPENDED
+}
+
+enum AdoptionType {
+  DIRECT_COPY
+  ADAPTED
+  PILOT_TEST
+  FULL_IMPLEMENTATION
+  PARTIAL_IMPLEMENTATION
+}
+
+enum CollaboratorRole {
+  LEAD_INNOVATOR
+  CO_INNOVATOR
+  CONTRIBUTOR
+  VALIDATOR
+  TESTER
+  ADVISOR
+  SPONSOR
+}
+
+enum ContributionType {
+  IDEA_GENERATION
+  TECHNICAL_DEVELOPMENT
+  TESTING_VALIDATION
+  IMPLEMENTATION
+  DOCUMENTATION
+  FUNDING
+  MENTORING
+  PROMOTION
+}
+
+enum MentorshipStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+  CANCELLED
+}
+
+enum AchievementCategory {
+  KNOWLEDGE_SHARING
+  COLLABORATION
+  INNOVATION
+  MENTORSHIP
+  PROJECT_SUCCESS
+  SAFETY
+  QUALITY
+  LEADERSHIP
+  COMMUNITY
+  LEARNING
+}
+
+enum AchievementLevel {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+}
+
+enum AchievementRarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum RiskCategory {
+  TECHNICAL
+  FINANCIAL
+  SCHEDULE
+  RESOURCE
+  SAFETY
+  QUALITY
+  REGULATORY
+  ENVIRONMENTAL
+  STAKEHOLDER
+  EXTERNAL
+}
+
+enum RiskStatus {
+  IDENTIFIED
+  ASSESSED
+  PLANNED
+  MONITORING
+  MITIGATED
+  RESOLVED
+  ACCEPTED
+}
+
+enum AttachmentType {
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+  DRAWING
+  MODEL_3D
+  SPREADSHEET
+  PRESENTATION
+  ARCHIVE
+  OTHER
+}
+
+enum InvitationType {
+  CONSTELLATION
+  PROJECT
+  ORGANIZATION
+  PROFESSIONAL_NETWORK
+  MENTORSHIP
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+// =====================================
+// TASK MANAGEMENT ENUMS
+// =====================================
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  WAITING_FOR_REVIEW
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  COMPLETED
+  CANCELLED
+  ARCHIVED
+}
+
+enum TaskPriority {
+  VERY_LOW
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+enum PhaseStatus {
+  PENDING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskDependencyType {
+  FINISH_TO_START
+  START_TO_START
+  FINISH_TO_FINISH
+  START_TO_FINISH
+  BLOCKS
+  BLOCKED_BY
+}
+
+enum WatchLevel {
+  ALL_UPDATES
+  IMPORTANT_ONLY
+  MENTIONS_ONLY
+  ASSIGNMENTS_ONLY
+}

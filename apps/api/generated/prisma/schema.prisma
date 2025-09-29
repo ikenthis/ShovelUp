@@ -1,0 +1,1066 @@
+// SocialConstructionHub - Enterprise Construction Management System
+// Enterprise-ready with multi-tenancy support + Professional Collaboration
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== CORE ENTITIES =====
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  logo      String?
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Enterprise settings
+  subscriptionTier   String  @default("PROFESSIONAL") // STARTER, PROFESSIONAL, ENTERPRISE
+  maxProjects        Int     @default(10)
+  maxUsersPerProject Int     @default(50)
+  apiRateLimit       Int     @default(1000) // requests per hour
+  storageLimit       Int     @default(100) // GB
+  customBranding     Boolean @default(false)
+  ssoEnabled         Boolean @default(false)
+  auditRetention     Int     @default(365) // days
+
+  // Relations
+  users    User[]
+  projects Project[]
+  posts    Post[]
+  rfis     RFI[]
+
+  @@map("organizations")
+}
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  firstName       String
+  lastName        String
+  avatar          String?
+  role            UserRole  @default(MEMBER)
+  isActive        Boolean   @default(true)
+  lastLoginAt     DateTime?
+  bio             String?
+  specialization  String?
+  experienceYears Int?
+  location        String?
+
+  // Professional scoring (renamed from social)
+  contributionScore  Int @default(0) // Previously socialScore
+  safetyScore        Int @default(0)
+  qualityScore       Int @default(0)
+  collaborationScore Int @default(0)
+
+  // Professional profile
+  professionalLevel String? // "Junior", "Senior", "Lead", "Principal"
+  certifications    String[] @default([])
+  skills            String[] @default([])
+  phoneNumber       String?
+  emergencyContact  String?
+
+  // Enterprise features
+  lastActiveProject String?
+  timezone          String  @default("UTC")
+  notificationPrefs Json    @default("{}")
+  workingHours      Json? // {start: "09:00", end: "17:00", timezone: "UTC"}
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Multi-tenant
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Relations
+  assignedTasks  Task[]          @relation("TaskAssignee")
+  createdTasks   Task[]          @relation("TaskCreator")
+  projectMembers ProjectMember[]
+  comments       Comment[]
+  documents      Document[]
+  activityLogs   ActivityLog[]
+
+  // Professional Collaboration (previously social)
+  posts        Post[]        @relation("PostAuthor")
+  postLikes    PostLike[]
+  postComments PostComment[]
+  postShares   PostShare[]
+  mentions     PostMention[] @relation("MentionedUser")
+  mentionedBy  PostMention[] @relation("MentioningUser")
+
+  // Professional network
+  following UserFollow[] @relation("Follower")
+  followers UserFollow[] @relation("Following")
+
+  // RFI Relations
+  submittedRFIs RFI[] @relation("RFISubmitter")
+  assignedRFIs  RFI[] @relation("RFIAssignee")
+
+  // Professional Recognition (gamification)
+  achievements   UserAchievement[]
+  badges         UserBadge[]
+  xpTransactions XPTransaction[]
+
+  // Safety & Incidents
+  reportedIncidents SafetyIncident[] @relation("IncidentReporter")
+  assignedIncidents SafetyIncident[] @relation("IncidentAssignee")
+
+  // Resolution Relations
+  verifiedResolutions PostResolution[] @relation("ResolutionVerifier")
+
+  // Approval workflows
+  approvalsGiven    Approval[] @relation("Approver")
+  approvalsReceived Approval[] @relation("Requester")
+
+  @@map("users")
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  status      ProjectStatus @default(PLANNING)
+  startDate   DateTime?
+  endDate     DateTime?
+  budget      Decimal?      @db.Decimal(15, 2)
+  actualCost  Decimal?      @db.Decimal(15, 2)
+  progress    Float         @default(0) // 0-100
+  address     String?
+  coordinates Json? // {lat, lng}
+  bimModelUrl String? // URL to BIM model
+  isPublic    Boolean       @default(false)
+
+  // Professional scoring (renamed from social)
+  collaborationScore Int @default(0) // Previously socialScore
+  safetyScore        Int @default(0)
+  qualityScore       Int @default(0)
+  efficiencyScore    Int @default(0)
+
+  // Enterprise features
+  clientName       String?
+  contractNumber   String?
+  projectCode      String?          @unique
+  regulatoryReqs   String[]         @default([])
+  complianceStatus ComplianceStatus @default(PENDING)
+  riskLevel        RiskLevel        @default(MEDIUM)
+
+  // Client management
+  clientApprovalRequired Boolean @default(false)
+  clientContactEmail     String?
+  clientContactName      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Multi-tenant
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Relations
+  phases          ProjectPhase[]
+  tasks           Task[]
+  members         ProjectMember[]
+  documents       Document[]
+  comments        Comment[]
+  activityLogs    ActivityLog[]
+  posts           Post[]
+  rfis            RFI[]
+  safetyIncidents SafetyIncident[]
+  approvals       Approval[]
+
+  @@map("projects")
+}
+
+model ProjectPhase {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  status      PhaseStatus @default(NOT_STARTED)
+  startDate   DateTime?
+  endDate     DateTime?
+  progress    Float       @default(0)
+  order       Int         @default(0)
+
+  // Enterprise features
+  budgetAllocated Decimal? @db.Decimal(15, 2)
+  actualCost      Decimal? @db.Decimal(15, 2)
+  milestones      Json     @default("[]") // Array of milestone objects
+  dependencies    String[] @default([]) // Phase IDs this depends on
+  criticalPath    Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks     Task[]
+  posts     Post[]
+
+  @@map("project_phases")
+}
+
+model ProjectMember {
+  id       String      @id @default(cuid())
+  role     ProjectRole @default(MEMBER)
+  joinedAt DateTime    @default(now())
+
+  // Enterprise features
+  hourlyRate      Decimal?    @db.Decimal(8, 2)
+  maxHoursPerWeek Int?        @default(40)
+  accessLevel     AccessLevel @default(STANDARD)
+  isLead          Boolean     @default(false)
+  department      String?
+  costCenter      String?
+
+  // Relations
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@map("project_members")
+}
+
+// ===== TASK MANAGEMENT =====
+
+model Task {
+  id             String       @id @default(cuid())
+  title          String
+  description    String?
+  status         TaskStatus   @default(TODO)
+  priority       TaskPriority @default(MEDIUM)
+  startDate      DateTime?
+  dueDate        DateTime?
+  completedAt    DateTime?
+  estimatedHours Float?
+  actualHours    Float?
+  progress       Float        @default(0)
+  tags           String[]     @default([])
+
+  // Enterprise features
+  isBlocked        Boolean   @default(false)
+  blockedReason    String?
+  blockedSince     DateTime?
+  estimatedCost    Decimal?  @db.Decimal(10, 2)
+  actualCost       Decimal?  @db.Decimal(10, 2)
+  requiresApproval Boolean   @default(false)
+  isClientVisible  Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  phaseId String?
+  phase   ProjectPhase? @relation(fields: [phaseId], references: [id])
+
+  assigneeId String?
+  assignee   User?   @relation("TaskAssignee", fields: [assigneeId], references: [id])
+
+  createdById String
+  createdBy   User   @relation("TaskCreator", fields: [createdById], references: [id])
+
+  parentTaskId String?
+  parentTask   Task?   @relation("TaskSubtasks", fields: [parentTaskId], references: [id])
+  subtasks     Task[]  @relation("TaskSubtasks")
+
+  comments  Comment[]
+  documents Document[]
+  posts     Post[]
+
+  @@map("tasks")
+}
+
+// ===== PROFESSIONAL COLLABORATION SYSTEM =====
+
+model Post {
+  id           String       @id @default(cuid())
+  content      String
+  type         PostType     @default(GENERAL)
+  priority     PostPriority @default(NORMAL)
+  status       PostStatus   @default(OPEN)
+  isPublic     Boolean      @default(true)
+  viewCount    Int          @default(0)
+  likeCount    Int          @default(0) // Professional acknowledgments
+  commentCount Int          @default(0)
+  shareCount   Int          @default(0)
+
+  // Enterprise features
+  requiresApproval    Boolean        @default(false)
+  approvedAt          DateTime?
+  approvedById        String?
+  isClientVisible     Boolean        @default(false)
+  estimatedResolution DateTime?
+  actualResolution    DateTime?
+  businessImpact      BusinessImpact @default(LOW)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  authorId String
+  author   User   @relation("PostAuthor", fields: [authorId], references: [id])
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  phaseId String?
+  phase   ProjectPhase? @relation(fields: [phaseId], references: [id])
+
+  taskId String?
+  task   Task?   @relation(fields: [taskId], references: [id])
+
+  // Contextual attachments
+  attachments PostAttachment[]
+  markups     PostMarkup[]
+  bimElements PostBimElement[]
+
+  // Professional interactions
+  likes    PostLike[]
+  comments PostComment[]
+  shares   PostShare[]
+  mentions PostMention[]
+  hashtags PostHashtag[]
+
+  // Related entities
+  rfis           RFI[]
+  safetyIncident SafetyIncident?
+
+  // Resolution tracking
+  resolutionId String?
+  resolution   PostResolution? @relation(fields: [resolutionId], references: [id])
+
+  @@map("posts")
+}
+
+model PostAttachment {
+  id       String         @id @default(cuid())
+  type     AttachmentType
+  fileUrl  String
+  fileName String
+  fileSize Int
+  mimeType String
+  metadata Json? // Para coordenadas, dimensiones, etc.
+  order    Int            @default(0)
+
+  // Enterprise features
+  isConfidential Boolean     @default(false)
+  accessLevel    AccessLevel @default(STANDARD)
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  markups PostMarkup[]
+
+  @@map("post_attachments")
+}
+
+model PostMarkup {
+  id          String     @id @default(cuid())
+  type        MarkupType
+  coordinates Json // {x, y, width, height} para 2D, {x,y,z} para 3D
+  content     String? // Texto del markup
+  color       String     @default("#FF0000")
+  strokeWidth Float      @default(2.0)
+  opacity     Float      @default(1.0)
+
+  // Referencia al archivo (plano/modelo)
+  attachmentId String
+  attachment   PostAttachment @relation(fields: [attachmentId], references: [id], onDelete: Cascade)
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("post_markups")
+}
+
+model PostBimElement {
+  id          String        @id @default(cuid())
+  elementId   String // ID del elemento en el modelo BIM
+  elementType String // "Wall", "Column", "Pipe", etc.
+  elementName String?
+  discipline  BimDiscipline
+  properties  Json? // Propiedades del elemento BIM
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("post_bim_elements")
+}
+
+model PostLike {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@map("post_likes")
+}
+
+model PostComment {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  // Nested comments
+  parentCommentId String?
+  parentComment   PostComment?  @relation("CommentReplies", fields: [parentCommentId], references: [id])
+  replies         PostComment[] @relation("CommentReplies")
+
+  @@map("post_comments")
+}
+
+model PostShare {
+  id        String   @id @default(cuid())
+  comment   String? // Optional comment when sharing
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@map("post_shares")
+}
+
+model PostMention {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  mentionedUserId String
+  mentionedUser   User   @relation("MentionedUser", fields: [mentionedUserId], references: [id], onDelete: Cascade)
+
+  mentioningUserId String
+  mentioningUser   User   @relation("MentioningUser", fields: [mentioningUserId], references: [id], onDelete: Cascade)
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([mentionedUserId, postId])
+  @@map("post_mentions")
+}
+
+model PostHashtag {
+  id  String @id @default(cuid())
+  tag String
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([tag, postId])
+  @@map("post_hashtags")
+}
+
+model PostResolution {
+  id            String    @id @default(cuid())
+  description   String
+  implementedAt DateTime?
+  verifiedAt    DateTime?
+  costImpact    Decimal?  @db.Decimal(10, 2)
+  timeImpact    Float? // Hours saved/lost
+
+  // Enterprise tracking
+  lessonsLearned     String?
+  preventiveMeasures String?
+  clientNotified     Boolean @default(false)
+
+  verifiedById String?
+  verifier     User?   @relation("ResolutionVerifier", fields: [verifiedById], references: [id])
+
+  posts Post[] // Un resolution puede aplicar a múltiples posts
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("post_resolutions")
+}
+
+// ===== RFI SYSTEM =====
+
+model RFI {
+  id           String      @id @default(cuid())
+  number       String      @unique // RFI-001, RFI-002, etc.
+  subject      String
+  description  String
+  priority     RFIPriority @default(MEDIUM)
+  status       RFIStatus   @default(SUBMITTED)
+  dueDate      DateTime?
+  responseDate DateTime?
+  response     String?
+
+  // Enterprise features
+  clientVisible     Boolean     @default(false)
+  costImpact        Decimal?    @db.Decimal(10, 2)
+  scheduleImpact    Int?        @default(0) // days
+  category          RFICategory @default(CLARIFICATION)
+  externalRFINumber String? // Client's RFI system number
+
+  // Relations
+  submittedById String
+  submittedBy   User   @relation("RFISubmitter", fields: [submittedById], references: [id])
+
+  assignedToId String?
+  assignedTo   User?   @relation("RFIAssignee", fields: [assignedToId], references: [id])
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id])
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id])
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("rfis")
+}
+
+// ===== APPROVAL SYSTEM =====
+
+model Approval {
+  id         String           @id @default(cuid())
+  type       ApprovalType
+  entityId   String // ID of the entity being approved
+  entityType String // "DOCUMENT", "RFI", "TASK", "POST", etc.
+  status     ApprovalStatus   @default(PENDING)
+  priority   ApprovalPriority @default(NORMAL)
+  dueDate    DateTime?
+
+  // Approval details
+  requestedAt DateTime  @default(now())
+  reviewedAt  DateTime?
+  comments    String?
+  conditions  String[]  @default([])
+
+  // Relations
+  requesterId String
+  requester   User   @relation("Requester", fields: [requesterId], references: [id])
+
+  approverId String
+  approver   User   @relation("Approver", fields: [approverId], references: [id])
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("approvals")
+}
+
+// ===== SAFETY & INCIDENTS =====
+
+model SafetyIncident {
+  id          String           @id @default(cuid())
+  title       String
+  description String
+  type        IncidentType
+  severity    IncidentSeverity @default(LOW)
+  status      IncidentStatus   @default(REPORTED)
+  location    String?
+  coordinates Json? // {lat, lng, elevation}
+  injuryCount Int              @default(0)
+  nearMiss    Boolean          @default(false)
+
+  // Enterprise features
+  regulatoryNotificationRequired Boolean @default(false)
+  clientNotificationRequired     Boolean @default(false)
+  rootCause                      String?
+  correctiveActions              String?
+  preventiveMeasures             String?
+  investigationComplete          Boolean @default(false)
+
+  // Time tracking
+  occurredAt DateTime
+  reportedAt DateTime  @default(now())
+  resolvedAt DateTime?
+
+  // Relations
+  reporterId String
+  reporter   User   @relation("IncidentReporter", fields: [reporterId], references: [id])
+
+  assignedToId String?
+  assignedTo   User?   @relation("IncidentAssignee", fields: [assignedToId], references: [id])
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id])
+
+  postId String @unique
+  post   Post   @relation(fields: [postId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("safety_incidents")
+}
+
+// ===== PROFESSIONAL NETWORK =====
+
+model UserFollow {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  followerId String
+  follower   User   @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+
+  followingId String
+  following   User   @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@map("user_follows")
+}
+
+// ===== PROFESSIONAL RECOGNITION =====
+
+model Achievement {
+  id          String              @id @default(cuid())
+  name        String              @unique
+  description String
+  icon        String
+  category    AchievementCategory
+  points      Int                 @default(0)
+  rarity      AchievementRarity   @default(COMMON)
+  conditions  Json // Conditions to unlock
+
+  userAchievements UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id         String   @id @default(cuid())
+  unlockedAt DateTime @default(now())
+  progress   Float    @default(0) // 0-100
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+model Badge {
+  id          String        @id @default(cuid())
+  name        String        @unique
+  description String
+  icon        String
+  color       String        @default("#3B82F6")
+  category    BadgeCategory
+
+  userBadges UserBadge[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  id       String   @id @default(cuid())
+  earnedAt DateTime @default(now())
+  level    Int      @default(1)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  badgeId String
+  badge   Badge  @relation(fields: [badgeId], references: [id])
+
+  @@unique([userId, badgeId])
+  @@map("user_badges")
+}
+
+model XPTransaction {
+  id        String     @id @default(cuid())
+  amount    Int // Can be positive or negative
+  reason    String
+  category  XPCategory
+  metadata  Json? // Additional context
+  createdAt DateTime   @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("xp_transactions")
+}
+
+// ===== DOCUMENT MANAGEMENT =====
+
+model Document {
+  id            String       @id @default(cuid())
+  name          String
+  description   String?
+  fileUrl       String
+  fileSize      Int
+  mimeType      String
+  version       String       @default("1.0")
+  type          DocumentType @default(OTHER)
+  isPublic      Boolean      @default(false)
+  downloadCount Int          @default(0)
+
+  // Enterprise features
+  isConfidential   Boolean        @default(false)
+  requiresApproval Boolean        @default(false)
+  approvalStatus   ApprovalStatus @default(APPROVED)
+  accessLevel      AccessLevel    @default(STANDARD)
+  retentionPeriod  Int? // days
+  complianceFlags  String[]       @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  taskId String?
+  task   Task?   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  uploadedById String
+  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
+
+  @@map("documents")
+}
+
+// ===== COMMUNICATION =====
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  taskId String?
+  task   Task?   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+// ===== AUDIT & LOGGING =====
+
+model ActivityLog {
+  id        String  @id @default(cuid())
+  action    String // "created", "updated", "deleted", etc.
+  entity    String // "project", "task", "user", etc.
+  entityId  String
+  oldValues Json?
+  newValues Json?
+  ipAddress String?
+  userAgent String?
+
+  // Enterprise features
+  sessionId      String?
+  riskLevel      RiskLevel @default(LOW)
+  complianceFlag Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("activity_logs")
+}
+
+// ===== ENUMS =====
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  MEMBER
+  VIEWER
+  CLIENT
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum PhaseStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  ON_HOLD
+}
+
+enum ProjectRole {
+  PROJECT_MANAGER
+  ARCHITECT
+  ENGINEER
+  CONTRACTOR
+  MEMBER
+  VIEWER
+  CLIENT_REP
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  COMPLETED
+  CANCELLED
+  BLOCKED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum DocumentType {
+  BLUEPRINT
+  SPECIFICATION
+  CONTRACT
+  REPORT
+  PHOTO
+  VIDEO
+  BIM_MODEL
+  OTHER
+}
+
+enum PostType {
+  GENERAL
+  DESIGN_ISSUE
+  CLASH_DETECTION
+  CONSTRUCTION_ISSUE
+  SAFETY_INCIDENT
+  PROGRESS_UPDATE
+  RFI_REQUEST
+  QUALITY_ISSUE
+  ANNOUNCEMENT
+  KNOWLEDGE_SHARE
+  CLIENT_UPDATE
+}
+
+enum PostPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+enum PostStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum AttachmentType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+  DRAWING_2D
+  BIM_MODEL
+  AUDIO
+  LINK
+}
+
+enum MarkupType {
+  CIRCLE
+  RECTANGLE
+  ARROW
+  TEXT
+  LINE
+  FREEHAND
+  MEASUREMENT
+  HIGHLIGHT
+  PIN
+}
+
+enum BimDiscipline {
+  ARCHITECTURAL
+  STRUCTURAL
+  MECHANICAL
+  ELECTRICAL
+  PLUMBING
+  FIRE_PROTECTION
+  SITE
+  CIVIL
+}
+
+enum RFIPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum RFIStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  RESPONDED
+  CLOSED
+}
+
+enum RFICategory {
+  CLARIFICATION
+  DESIGN_CHANGE
+  SUBSTITUTION
+  CONFLICT_RESOLUTION
+  SPECIFICATION_ISSUE
+}
+
+enum IncidentType {
+  INJURY
+  NEAR_MISS
+  PROPERTY_DAMAGE
+  ENVIRONMENTAL
+  SECURITY
+  EQUIPMENT_FAILURE
+  PROCESS_DEVIATION
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  REPORTED
+  INVESTIGATING
+  RESOLVED
+  CLOSED
+}
+
+enum AchievementCategory {
+  SAFETY
+  QUALITY
+  COLLABORATION
+  INNOVATION
+  LEADERSHIP
+  LEARNING
+}
+
+enum AchievementRarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum BadgeCategory {
+  EXPERTISE
+  SAFETY
+  COLLABORATION
+  LEADERSHIP
+  INNOVATION
+  MILESTONE
+}
+
+enum XPCategory {
+  POST_CREATED
+  POST_LIKED
+  COMMENT_ADDED
+  ISSUE_RESOLVED
+  SAFETY_REPORT
+  KNOWLEDGE_SHARE
+  COLLABORATION
+  MILESTONE_ACHIEVED
+}
+
+// ===== NEW ENTERPRISE ENUMS =====
+
+enum AccessLevel {
+  RESTRICTED
+  STANDARD
+  ELEVATED
+  CONFIDENTIAL
+}
+
+enum ApprovalType {
+  DOCUMENT_REVIEW
+  RFI_RESPONSE
+  CHANGE_ORDER
+  BUDGET_APPROVAL
+  SAFETY_CLEARANCE
+  QUALITY_SIGN_OFF
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  NEEDS_REVISION
+}
+
+enum ApprovalPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum ComplianceStatus {
+  PENDING
+  COMPLIANT
+  NON_COMPLIANT
+  UNDER_REVIEW
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum BusinessImpact {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}

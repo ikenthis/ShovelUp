@@ -1,0 +1,701 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type Professional {
+  id: ID!
+  email: String!
+  username: String!
+  firstName: String!
+  lastName: String!
+  displayName: String
+  title: String
+  bio: String
+  discipline: Discipline!
+  specialties: [String!]!
+  yearsExperience: Int
+  currentRole: String
+  phone: String
+  location: JSON
+  avatar: String
+  banner: String
+  isVerified: Boolean!
+  verifiedAt: DateTime
+  verifiedBy: String
+  emailVerified: Boolean!
+  phoneVerified: Boolean!
+  licenses: JSON
+  certifications: JSON
+  education: JSON
+  portfolio: JSON
+  linkedinUrl: String
+  portfolioUrl: String
+  websiteUrl: String
+  socialLinks: JSON
+  reputationScore: Float!
+  contributionScore: Float!
+  knowledgeShares: Int!
+  mentorshipScore: Float!
+  helpfulnessRating: Float!
+  responseTime: Float
+  postsCount: Int!
+  commentsCount: Int!
+  likesReceived: Int!
+  sharesReceived: Int!
+  followersCount: Int!
+  followingCount: Int!
+  isActive: Boolean!
+  isAvailableForWork: Boolean!
+  isOpenToMentoring: Boolean!
+  privacySettings: JSON
+  notificationSettings: JSON
+  organizationId: String
+  employmentType: EmploymentType
+  availabilityStatus: AvailabilityStatus!
+  hourlyRate: Float
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  lastActiveAt: DateTime!
+}
+
+"""Professional disciplines and specializations in construction"""
+enum Discipline {
+  ARCHITECTURE
+  STRUCTURAL_ENGINEERING
+  MECHANICAL_ENGINEERING
+  ELECTRICAL_ENGINEERING
+  PLUMBING_ENGINEERING
+  CIVIL_ENGINEERING
+  ENVIRONMENTAL_ENGINEERING
+  FIRE_PROTECTION
+  PROJECT_MANAGEMENT
+  CONSTRUCTION_MANAGEMENT
+  SAFETY_MANAGEMENT
+  QUALITY_CONTROL
+  BIM_MANAGEMENT
+  SURVEYING
+  COST_ESTIMATION
+  SCHEDULING
+  PROCUREMENT
+  COMMISSIONING
+  FACILITY_MANAGEMENT
+  OTHER
+}
+
+"""
+The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
+"""
+scalar JSON
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+"""Types of employment relationships"""
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACTOR
+  FREELANCER
+  CONSULTANT
+  INTERN
+}
+
+"""Professional availability for work and collaboration"""
+enum AvailabilityStatus {
+  AVAILABLE
+  BUSY
+  PARTIALLY_AVAILABLE
+  UNAVAILABLE
+  ON_LEAVE
+}
+
+type PostComment {
+  id: ID!
+  content: String!
+  postId: ID!
+  authorId: ID!
+  parentCommentId: ID
+  likeCount: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  post: Post
+  author: Professional
+  parentComment: PostComment
+  replies: [PostComment!]
+}
+
+type PostLike {
+  id: ID!
+  postId: ID!
+  userId: ID!
+  createdAt: DateTime!
+  post: Post
+  user: Professional
+}
+
+type PostAttachment {
+  id: ID!
+  postId: ID!
+  filename: String!
+  originalName: String!
+  mimeType: String!
+  size: Int!
+  url: String!
+  thumbnailUrl: String
+  createdAt: DateTime!
+  post: Post
+}
+
+type PostShare {
+  id: ID!
+  postId: ID!
+  userId: ID!
+  comment: String
+  createdAt: DateTime!
+  post: Post
+  user: Professional
+}
+
+type PostMention {
+  id: ID!
+  postId: ID!
+  mentionedUserId: ID!
+  mentionedById: ID!
+  createdAt: DateTime!
+  post: Post
+  mentionedUser: Professional
+  mentionedBy: Professional
+}
+
+type Post {
+  id: ID!
+  content: String!
+  type: PostType!
+  status: PostStatus!
+  isPublic: Boolean!
+  viewCount: Int!
+  likeCount: Int!
+  commentCount: Int!
+  shareCount: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  authorId: ID!
+  projectId: ID
+  author: Professional
+  isLikedByCurrentUser: Boolean
+  isAuthoredByCurrentUser: Boolean
+  timeAgo: String
+  engagementScore: Int
+  tags: [String!]
+  comments: [PostComment!]
+  likes: [PostLike!]
+  attachments: [PostAttachment!]
+  shares: [PostShare!]
+  mentions: [PostMention!]
+}
+
+"""Categories of social content posts"""
+enum PostType {
+  GENERAL
+  PROGRESS_UPDATE
+  ISSUE_REPORT
+  QUESTION
+  KNOWLEDGE_SHARE
+  LESSON_LEARNED
+  INNOVATION
+  ANNOUNCEMENT
+  MILESTONE
+  SAFETY_ALERT
+  QUALITY_ISSUE
+  SCHEDULE_UPDATE
+  BUDGET_UPDATE
+  CHANGE_ORDER
+  RFI
+  SUBMITTAL
+  OTHER
+}
+
+"""Publication and moderation status of posts"""
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  DELETED
+  FLAGGED
+}
+
+type Organization {
+  id: ID!
+  name: String!
+  slug: String!
+  legalName: String
+  description: String
+  type: OrganizationType!
+  size: OrganizationSize
+  industry: Industry
+  email: String
+  phone: String
+  website: String
+  taxId: String
+  specialties: [String!]
+  reputationScore: Float!
+  projectsCompleted: Int!
+  projectsActive: Int!
+  averageRating: Float
+  safetyScore: Float
+  qualityScore: Float
+  onTimeDeliveryRate: Float
+  yearEstablished: Int
+  employeeCount: Int
+  isVerified: Boolean!
+  verifiedAt: DateTime
+  verifiedBy: String
+  isActive: Boolean!
+  avatar: String
+  banner: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+
+  """Number of active professionals in this organization"""
+  membersCount: Int!
+
+  """Total number of projects this organization is involved in"""
+  projectsCount: Int!
+
+  """Number of constellations this organization participates in"""
+  constellationsCount: Int!
+
+  """Number of active collaborations with other organizations"""
+  collaborationsCount: Int!
+}
+
+"""Types of organizations in the construction ecosystem"""
+enum OrganizationType {
+  GENERAL_CONTRACTOR
+  SUBCONTRACTOR
+  SPECIALTY_CONTRACTOR
+  ARCHITECT
+  ENGINEER_STRUCTURAL
+  ENGINEER_MEP
+  ENGINEER_CIVIL
+  CONSULTANT
+  SUPPLIER
+  MANUFACTURER
+  DEVELOPER
+  OWNER
+  GOVERNMENT
+  ASSOCIATION
+  OTHER
+}
+
+"""Organization size categories based on employee count"""
+enum OrganizationSize {
+  FREELANCER
+  STARTUP
+  SMALL
+  MEDIUM
+  LARGE
+  ENTERPRISE
+}
+
+"""Construction industry specializations and market segments"""
+enum Industry {
+  RESIDENTIAL
+  COMMERCIAL
+  INDUSTRIAL
+  INFRASTRUCTURE
+  HEALTHCARE
+  EDUCATION
+  HOSPITALITY
+  RETAIL
+  MIXED_USE
+  OTHER
+}
+
+type PaginationInfo {
+  """Current page number"""
+  page: Int!
+
+  """Number of items per page"""
+  limit: Int!
+
+  """Total number of items"""
+  total: Int!
+
+  """Total number of pages"""
+  totalPages: Int!
+
+  """Whether there is a next page"""
+  hasNextPage: Boolean!
+
+  """Whether there is a previous page"""
+  hasPreviousPage: Boolean!
+}
+
+type PaginatedOrganizations {
+  data: [Organization!]!
+  pagination: PaginationInfo!
+}
+
+type Project {
+  id: ID!
+  name: String!
+  description: String
+  status: ProjectStatus!
+  startDate: DateTime
+  endDate: DateTime
+  budget: Float
+  actualCost: Float
+  progress: Float!
+  address: String
+  coordinates: JSON
+  bimModelUrl: String
+  isPublic: Boolean!
+  collaborationScore: Int!
+  safetyScore: Int!
+  qualityScore: Int!
+  efficiencyScore: Int!
+  clientName: String
+  contractNumber: String
+  projectCode: String
+  regulatoryReqs: [String!]!
+  clientApprovalRequired: Boolean!
+  clientContactEmail: String
+  clientContactName: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  organizationId: String!
+  phaseIds: [String!]
+  taskIds: [String!]
+  memberIds: [String!]
+  documentIds: [String!]
+  postIds: [String!]
+  rfiIds: [String!]
+  safetyIncidentIds: [String!]
+  approvalIds: [String!]
+  totalTasks: Int
+  completedTasks: Int
+  activeMembersCount: Int
+  budgetUtilization: Float
+}
+
+"""Current status of project execution"""
+enum ProjectStatus {
+  ACTIVE
+  ON_HOLD
+  CANCELLED
+  COMPLETED
+  ARCHIVED
+}
+
+type Task {
+  id: ID!
+  title: String!
+  description: String
+  status: TaskStatus!
+  priority: TaskPriority!
+  startDate: DateTime
+  dueDate: DateTime
+  completedAt: DateTime
+  estimatedHours: Float
+  actualHours: Float
+  progress: Float!
+  tags: [String!]!
+  isBlocked: Boolean!
+  blockedReason: String
+  blockedSince: DateTime
+  estimatedCost: Float
+  actualCost: Float
+  requiresApproval: Boolean!
+  isClientVisible: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  projectId: String!
+  phaseId: String
+  assigneeId: String
+  createdById: String!
+  parentTaskId: String
+  subtaskIds: [String!]
+  commentIds: [String!]
+  documentIds: [String!]
+  postIds: [String!]
+}
+
+"""Task completion and workflow status"""
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  WAITING_FOR_REVIEW
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  COMPLETED
+  CANCELLED
+  ARCHIVED
+}
+
+"""Task urgency and importance levels"""
+enum TaskPriority {
+  VERY_LOW
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+type AuthPayload {
+  access_token: String!
+  user: Professional!
+}
+
+type Query {
+  posts: [Post!]!
+  post(id: ID!): Post!
+  postsByAuthor(authorId: ID!): [Post!]!
+  myPosts: [Post!]!
+  postsByType(type: String!): [Post!]!
+  postsByStatus(status: String!): [Post!]!
+  postsWithFilters(type: String, status: String, authorId: ID, limit: Int, offset: Int): [Post!]!
+  recentPosts(limit: Int! = 20): [Post!]!
+  totalPostsCount: Int!
+
+  """Get paginated list of organizations with optional filters"""
+  organizations(filter: OrganizationFilterInput, pagination: OrganizationPaginationInput): PaginatedOrganizations!
+
+  """Get a single organization by ID"""
+  organization(id: ID!): Organization!
+
+  """Get a single organization by slug"""
+  organizationBySlug(slug: String!): Organization!
+
+  """Search organizations by name, description, or specialties"""
+  searchOrganizations(query: String!, limit: Int! = 20): [Organization!]!
+
+  """Get top-rated verified organizations"""
+  topOrganizations(limit: Int! = 10): [Organization!]!
+  me: Professional!
+  professionals: [Professional!]!
+  professional(id: ID!): Professional!
+  myProfile: Professional!
+}
+
+input OrganizationFilterInput {
+  types: [OrganizationType!]
+  sizes: [OrganizationSize!]
+  industries: [Industry!]
+  search: String
+  isVerified: Boolean
+  isActive: Boolean
+  minRating: Int
+  minEmployeeCount: Int
+  maxEmployeeCount: Int
+}
+
+input OrganizationPaginationInput {
+  """Page number (starts from 1)"""
+  page: Int! = 1
+
+  """Number of items per page"""
+  limit: Int! = 20
+
+  """Sort order (ascending or descending)"""
+  sortOrder: SortOrder! = ASC
+
+  """Field to sort by"""
+  sortBy: OrganizationSortField! = NAME
+}
+
+"""Sort order for queries (ascending or descending)"""
+enum SortOrder {
+  ASC
+  DESC
+}
+
+"""Available fields for sorting organizations"""
+enum OrganizationSortField {
+  NAME
+  CREATED_AT
+  REPUTATION_SCORE
+  PROJECTS_COMPLETED
+  EMPLOYEE_COUNT
+  YEAR_ESTABLISHED
+}
+
+type Mutation {
+  createPost(createPostInput: CreatePostInput!): Post!
+  updatePost(updatePostInput: UpdatePostInput!): Post!
+  removePost(id: ID!): Boolean!
+  likePost(postId: ID!): Post!
+  unlikePost(postId: ID!): Post!
+
+  """Create a new organization"""
+  createOrganization(createOrganizationInput: CreateOrganizationInput!): Organization!
+
+  """Update an existing organization"""
+  updateOrganization(updateOrganizationInput: UpdateOrganizationInput!): Organization!
+
+  """Soft delete an organization"""
+  removeOrganization(id: ID!): Organization!
+
+  """Verify an organization"""
+  verifyOrganization(id: ID!, verifiedBy: String!): Organization!
+
+  """Remove verification from an organization"""
+  unverifyOrganization(id: ID!): Organization!
+
+  """Recalculate and update organization reputation score"""
+  updateOrganizationReputationScore(id: ID!): Float!
+  signIn(signInInput: SignInInput!): AuthPayload!
+  register(registerInput: RegisterInput!): AuthPayload!
+  logout: Boolean!
+  refreshToken(token: String!): AuthPayload!
+  createProfessional(createProfessionalInput: CreateProfessionalInput!): Professional!
+  updateProfessional(updateProfessionalInput: UpdateProfessionalInput!): Professional!
+  updateMyProfile(updateProfessionalInput: UpdateProfessionalInput!): Professional!
+  removeProfessional(id: ID!): Boolean!
+  deleteMyAccount: Boolean!
+}
+
+input CreatePostInput {
+  content: String!
+  type: PostType! = GENERAL
+  status: PostStatus! = PUBLISHED
+}
+
+input UpdatePostInput {
+  content: String
+  type: PostType = GENERAL
+  status: PostStatus = PUBLISHED
+  id: ID!
+}
+
+input CreateOrganizationInput {
+  name: String!
+  slug: String!
+  legalName: String
+  description: String
+  type: OrganizationType!
+  size: OrganizationSize
+  industry: Industry
+  email: String
+  phone: String
+  website: String
+  taxId: String
+  specialties: [String!]
+  yearEstablished: Int
+  employeeCount: Int
+  avatar: String
+  banner: String
+}
+
+input UpdateOrganizationInput {
+  id: ID!
+  name: String
+  slug: String
+  legalName: String
+  description: String
+  type: OrganizationType
+  size: OrganizationSize
+  industry: Industry
+  email: String
+  phone: String
+  website: String
+  taxId: String
+  specialties: [String!]
+  yearEstablished: Int
+  employeeCount: Int
+  avatar: String
+  banner: String
+}
+
+input SignInInput {
+  email: String!
+  password: String!
+  rememberMe: Boolean = false
+}
+
+input RegisterInput {
+  firstName: String!
+  lastName: String!
+  email: String!
+  password: String!
+  discipline: Discipline!
+  organizationId: String
+  bio: String
+  phone: String
+}
+
+input CreateProfessionalInput {
+  email: String!
+  username: String!
+  password: String!
+  firstName: String!
+  lastName: String!
+  displayName: String
+  title: String
+  bio: String
+  discipline: Discipline!
+  specialties: [String!]! = []
+  yearsExperience: Int
+  currentRole: String
+  phone: String
+  location: JSON
+  avatar: String
+  banner: String
+  licenses: JSON
+  certifications: JSON
+  education: JSON
+  portfolio: JSON
+  linkedinUrl: String
+  portfolioUrl: String
+  websiteUrl: String
+  socialLinks: JSON
+  privacySettings: JSON
+  notificationSettings: JSON
+  organizationId: String
+  employmentType: EmploymentType
+  availabilityStatus: AvailabilityStatus! = AVAILABLE
+  hourlyRate: Float
+  isAvailableForWork: Boolean! = true
+  isOpenToMentoring: Boolean! = false
+}
+
+input UpdateProfessionalInput {
+  email: String
+  username: String
+  password: String
+  firstName: String
+  lastName: String
+  displayName: String
+  title: String
+  bio: String
+  discipline: Discipline
+  specialties: [String!] = []
+  yearsExperience: Int
+  currentRole: String
+  phone: String
+  location: JSON
+  avatar: String
+  banner: String
+  licenses: JSON
+  certifications: JSON
+  education: JSON
+  portfolio: JSON
+  linkedinUrl: String
+  portfolioUrl: String
+  websiteUrl: String
+  socialLinks: JSON
+  privacySettings: JSON
+  notificationSettings: JSON
+  organizationId: String
+  employmentType: EmploymentType
+  availabilityStatus: AvailabilityStatus = AVAILABLE
+  hourlyRate: Float
+  isAvailableForWork: Boolean = true
+  isOpenToMentoring: Boolean = false
+  id: ID!
+}

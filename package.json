@@ -1,0 +1,28 @@
+{
+  "name": "digital_shovel",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint"
+  },
+  "packageManager": "npm@10.2.4",
+  "workspaces": [
+    "apps/*"
+  ],
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "turbo": "^2.5.6"
+  },
+  "dependencies": {
+    "@types/pg": "^8.15.5",
+    "graphql-type-json": "^0.3.2",
+    "nest": "^0.1.6",
+    "pg": "^8.16.3"
+  }
+}
